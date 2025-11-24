@@ -51,7 +51,8 @@ export const duplicateBoardFromSeason = mutation({
     }
 
     const isCommissioner =
-      targetLeague.commissionerId.toString() === args.requestingUserId.toString();
+      targetLeague.commissionerId.toString() ===
+      args.requestingUserId.toString();
     if (!isCommissioner) {
       throw new Error('Only the commissioner can duplicate the draft board');
     }
@@ -800,18 +801,18 @@ export const draftArtist = mutation({
       .collect();
 
     const playersWhoPickedThisRound = new Set<string>();
-    
+
     for (const sp of allSeasonPlayers) {
       const rosterEntriesForPlayer = await ctx.db
         .query('roster_entries')
         .withIndex('by_seasonPlayerId', (q) => q.eq('seasonPlayerId', sp._id))
         .collect();
-      
+
       // Check if this player has any artist picked in the current round
       const hasPickedThisRound = rosterEntriesForPlayer.some(
         (r) => r.acquiredAtRound === draftState.currentRound
       );
-      
+
       if (hasPickedThisRound) {
         playersWhoPickedThisRound.add(sp._id.toString());
       }

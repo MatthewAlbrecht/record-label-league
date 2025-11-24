@@ -11,6 +11,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { useAuth } from "~/lib/auth-context";
 import { toast } from "sonner";
 import { AwardCategoryList, type AwardCategory } from "~/components/award-category-list";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const DEFAULT_AWARDS: AwardCategory[] = [
 	{ id: '1', name: '', description: '', points: 1 },
@@ -41,6 +42,8 @@ export default function EditChallengePage() {
 		awards: DEFAULT_AWARDS,
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [showJsonPaste, setShowJsonPaste] = useState(false);
+	const [jsonInput, setJsonInput] = useState('');
 
 	const currentUser = useQuery(
 		api.users.getUserById,
@@ -141,7 +144,7 @@ export default function EditChallengePage() {
 						.filter((r) => r.length > 0),
 				},
 				awardCategories: formData.awards,
-				options: formData.options.length > 0 
+				options: formData.options.length > 0
 					? formData.options.map((opt) => `${opt.name} — ${opt.description}`)
 					: undefined,
 			});
@@ -183,6 +186,41 @@ export default function EditChallengePage() {
 		const newOptions = [...formData.options];
 		newOptions[index] = { ...newOptions[index], [field]: value };
 		setFormData({ ...formData, options: newOptions });
+	}
+
+	function handleJsonPaste() {
+		try {
+			const parsed = JSON.parse(jsonInput);
+			if (!Array.isArray(parsed)) {
+				toast.error("JSON must be an array of awards");
+				return;
+			}
+
+			const awards: AwardCategory[] = parsed.map((item, idx) => {
+				if (typeof item.name !== 'string' || typeof item.description !== 'string') {
+					throw new Error(`Award at index ${idx} missing name or description`);
+				}
+				// Assign points based on position: first 4 = 1pt, next 2 = 2pt, rest = 3pt
+				let points: 1 | 2 | 3 = 1;
+				if (idx >= 4 && idx < 6) points = 2;
+				else if (idx >= 6) points = 3;
+
+				return {
+					id: item.id || String(idx + 1),
+					name: item.name,
+					description: item.description,
+					points: item.points ?? points,
+				};
+			});
+
+			setFormData({ ...formData, awards });
+			setJsonInput('');
+			setShowJsonPaste(false);
+			toast.success(`Replaced with ${awards.length} awards`);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Invalid JSON";
+			toast.error(msg);
+		}
 	}
 
 	if (isLoading || !isAuthenticated || !user || currentUser === undefined) {
@@ -382,7 +420,42 @@ export default function EditChallengePage() {
 
 				{/* Awards Editor */}
 				<div>
-					<h3 className="font-medium text-base mb-3">Award Categories *</h3>
+					<div className="flex items-center justify-between mb-3">
+						<h3 className="font-medium text-base">Award Categories *</h3>
+						<Button
+							onClick={() => setShowJsonPaste(!showJsonPaste)}
+							variant="outline"
+							size="sm"
+							className="gap-1"
+						>
+							{showJsonPaste ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+							Paste JSON
+						</Button>
+					</div>
+
+					{showJsonPaste && (
+						<div className="mb-4 p-4 bg-gray-50 border rounded-lg">
+							<p className="text-xs text-gray-600 mb-2">
+								Paste an array of awards. Each should have <code className="bg-gray-200 px-1 rounded">name</code> and <code className="bg-gray-200 px-1 rounded">description</code>. Points will be auto-assigned by position.
+							</p>
+							<Textarea
+								value={jsonInput}
+								onChange={(e) => setJsonInput(e.target.value)}
+								placeholder='[{"name": "Best Track", "description": "..."}, ...]'
+								rows={6}
+								className="font-mono text-xs mb-2"
+							/>
+							<div className="flex gap-2">
+								<Button onClick={handleJsonPaste} size="sm">
+									Apply JSON
+								</Button>
+								<Button onClick={() => { setShowJsonPaste(false); setJsonInput(''); }} variant="ghost" size="sm">
+									Cancel
+								</Button>
+							</div>
+						</div>
+					)}
+
 					<AwardCategoryList
 						awards={formData.awards}
 						onAwardsChange={handleAwardsReorder}
