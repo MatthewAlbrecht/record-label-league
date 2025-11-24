@@ -6,12 +6,13 @@ import { Geist } from "next/font/google";
 import { SiteHeader } from "~/app/_components/site-header";
 import { Toaster } from "~/components/ui/sonner";
 import { AuthProvider } from "~/lib/auth-context";
+import { ThemeProvider } from "~/lib/theme-context";
 import ConvexClientProvider from "~/providers/ConvexProvider";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
-	title: "moooose",
-	description: "moooose.dev",
+	title: "Record Label League",
+	description: "Record Label League",
 	icons: [{ rel: "icon", url: "/favicon.svg" }],
 };
 
@@ -24,17 +25,19 @@ export default function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang="en" className={`${geist.variable}`}>
+		<html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
 			<body>
-				<AuthProvider>
-					<ConvexClientProvider>
+				<ConvexClientProvider>
+					<AuthProvider>
 						<TRPCReactProvider>
-							<SiteHeader />
-							{children}
-							<Toaster />
+							<ThemeProvider>
+								<SiteHeader />
+								{children}
+								<Toaster />
+							</ThemeProvider>
 						</TRPCReactProvider>
-					</ConvexClientProvider>
-				</AuthProvider>
+					</AuthProvider>
+				</ConvexClientProvider>
 			</body>
 		</html>
 	);

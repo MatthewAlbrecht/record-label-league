@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -12,7 +13,7 @@ export function LoginForm() {
 	const params = useSearchParams();
 	const next = params?.get("next");
 	const { login } = useAuth();
-	const [username, setUsername] = useState("");
+	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,13 +23,23 @@ export function LoginForm() {
 		setIsSubmitting(true);
 		setError(null);
 
-		const success = await login(username, password);
-		setIsSubmitting(false);
+		try {
+			console.log("Attempting login with:", email);
+			const success = await login(email, password);
+			console.log("Login result:", success);
+			setIsSubmitting(false);
 
-		if (success) {
-			router.replace(next || "/example");
-		} else {
-			setError("Invalid credentials");
+			if (success) {
+				console.log("Login successful, redirecting to:", next || "/dashboard");
+				router.replace(next || "/dashboard");
+			} else {
+				console.log("Login failed - invalid credentials");
+				setError("Invalid credentials");
+			}
+		} catch (err) {
+			console.error("Login error:", err);
+			setError(err instanceof Error ? err.message : "An error occurred");
+			setIsSubmitting(false);
 		}
 	}
 
@@ -37,11 +48,13 @@ export function LoginForm() {
 			<h1 className="mb-6 font-semibold text-2xl">Sign in</h1>
 			<form onSubmit={onSubmit} className="space-y-4">
 				<div className="flex flex-col gap-1">
-					<Label htmlFor="username">Username</Label>
+					<Label htmlFor="email">Email</Label>
 					<Input
-						id="username"
-						value={username}
-						onChange={(e) => setUsername(e.target.value)}
+						id="email"
+						type="email"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						placeholder="you@example.com"
 					/>
 				</div>
 				<div className="flex flex-col gap-1">
@@ -58,6 +71,12 @@ export function LoginForm() {
 					{isSubmitting ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
+			<p className="mt-4 text-center text-sm">
+				Don't have an account?{" "}
+				<Link href="/signup" className="text-blue-500 hover:underline">
+					Sign up
+				</Link>
+			</p>
 		</main>
 	);
 }

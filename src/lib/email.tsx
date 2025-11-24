@@ -23,7 +23,7 @@ export async function sendExampleEmail(data: ExampleEmailData) {
 		console.log(`📧 Sending example email to ${data.userName}...`);
 
 		const result = await resend.emails.send({
-			from: "Your App <notifications@yourdomain.com>",
+			from: "Record Label League <notifications@yourdomain.com>",
 			to: env.NOTIFICATION_EMAIL,
 			subject: `Hello ${data.userName}!`,
 			react: <ExampleEmail userName={data.userName} message={data.message} />,

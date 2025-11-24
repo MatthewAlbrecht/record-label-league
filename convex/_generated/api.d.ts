@@ -13,16 +13,23 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as _utils_geniusParser from "../_utils/geniusParser.js";
-import type * as articles from "../articles.js";
+import type * as actions_presentation from "../actions/presentation.js";
+import type * as actions_spotify from "../actions/spotify.js";
+import type * as admin from "../admin.js";
+import type * as advantages from "../advantages.js";
 import type * as auth from "../auth.js";
-import type * as bookSearch from "../bookSearch.js";
-import type * as folioSociety from "../folioSociety.js";
-import type * as folioSocietyDetails from "../folioSocietyDetails.js";
-import type * as folioSocietyImages from "../folioSocietyImages.js";
-import type * as folioSocietyReleases from "../folioSocietyReleases.js";
-import type * as geniusAlbums from "../geniusAlbums.js";
-import type * as s3Helper from "../s3Helper.js";
+import type * as challenges from "../challenges.js";
+import type * as dashboard from "../dashboard.js";
+import type * as drafts from "../drafts.js";
+import type * as events from "../events.js";
+import type * as inventory from "../inventory.js";
+import type * as leagues from "../leagues.js";
+import type * as playlists from "../playlists.js";
+import type * as presentation from "../presentation.js";
+import type * as seasons from "../seasons.js";
+import type * as todos from "../todos.js";
+import type * as users from "../users.js";
+import type * as voting from "../voting.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -33,16 +40,23 @@ import type * as s3Helper from "../s3Helper.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  "_utils/geniusParser": typeof _utils_geniusParser;
-  articles: typeof articles;
+  "actions/presentation": typeof actions_presentation;
+  "actions/spotify": typeof actions_spotify;
+  admin: typeof admin;
+  advantages: typeof advantages;
   auth: typeof auth;
-  bookSearch: typeof bookSearch;
-  folioSociety: typeof folioSociety;
-  folioSocietyDetails: typeof folioSocietyDetails;
-  folioSocietyImages: typeof folioSocietyImages;
-  folioSocietyReleases: typeof folioSocietyReleases;
-  geniusAlbums: typeof geniusAlbums;
-  s3Helper: typeof s3Helper;
+  challenges: typeof challenges;
+  dashboard: typeof dashboard;
+  drafts: typeof drafts;
+  events: typeof events;
+  inventory: typeof inventory;
+  leagues: typeof leagues;
+  playlists: typeof playlists;
+  presentation: typeof presentation;
+  seasons: typeof seasons;
+  todos: typeof todos;
+  users: typeof users;
+  voting: typeof voting;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

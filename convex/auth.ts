@@ -1,41 +1,87 @@
-import { ConvexError } from 'convex/values';
-import type { ActionCtx, MutationCtx, QueryCtx } from './_generated/server';
+import { action } from './_generated/server';
+import { v } from 'convex/values';
+import { api } from './_generated/api';
 
-// Auth utility functions for Convex
-export function requireAuth(ctx: QueryCtx | MutationCtx | ActionCtx) {
-  // Auth is handled by Next.js middleware via session cookies
-  // This function is a no-op that just returns true to indicate auth is handled
-  return true;
-}
+export const signup = action({
+  args: {
+    email: v.string(),
+    password: v.string(),
+    displayName: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    success: boolean;
+    userId: string;
+    user: { id: string; email: string; displayName: string };
+  }> => {
+    // Check if email already exists
+    const existingUser = await ctx.runQuery(api.users.getUserByEmail, {
+      email: args.email,
+    });
 
-// For custom auth, we can validate session tokens passed as headers
-export function validateSessionToken(token: string) {
-  if (!token) {
-    return null;
-  }
-
-  try {
-    // Decode the token (assuming it's base64url encoded)
-    const decoded = Buffer.from(token, 'base64url').toString();
-    const parts = decoded.split(':');
-    const username = parts[0];
-    const timestamp = parts[1];
-
-    if (!username || !timestamp) {
-      return null;
+    if (existingUser) {
+      throw new Error('Email already exists');
     }
 
-    // Check if token is recent (within 7 days)
-    const tokenTime = Number.parseInt(timestamp, 10);
-    const now = Date.now();
-    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    // Create new user
+    const userId: string = await ctx.runMutation(api.users.createUser, {
+      email: args.email,
+      password: args.password,
+      displayName: args.displayName,
+    });
 
-    if (now - tokenTime > sevenDays) {
-      return null;
+    return {
+      success: true,
+      userId,
+      user: {
+        id: userId,
+        email: args.email,
+        displayName: args.displayName,
+      },
+    };
+  },
+});
+
+export const login = action({
+  args: {
+    email: v.string(),
+    password: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    success: boolean;
+    user: { id: string; email: string; displayName: string };
+  }> => {
+    // Get user by email
+    const user: {
+      _id: string;
+      email: string;
+      password: string;
+      displayName: string;
+    } | null = await ctx.runQuery(api.users.getUserByEmail, {
+      email: args.email,
+    });
+
+    if (!user) {
+      throw new Error('User not found');
     }
 
-    return { username };
-  } catch (error) {
-    return null;
-  }
-}
+    // TODO: Phase 1 - Use bcrypt to compare hashed passwords
+    if (user.password !== args.password) {
+      throw new Error('Invalid password');
+    }
+
+    return {
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+      },
+    };
+  },
+});

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "~/lib/auth-context";
+import { ThemeToggle } from "~/components/theme-toggle";
 
 export function SiteHeader() {
 	const { isAuthenticated, logout } = useAuth();
@@ -11,17 +12,18 @@ export function SiteHeader() {
 			<div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
 				<div className="flex items-center gap-3">
 					<Link href="/" className="font-semibold tracking-tight">
-						Your App
+						Record Label League
 					</Link>
-					{isAuthenticated && (
+					{/* {isAuthenticated && (
 						<nav className="flex items-center gap-3">
 							<Link href="/example" className="text-sm hover:underline">
 								Example
 							</Link>
 						</nav>
-					)}
+					)} */}
 				</div>
 				<nav className="flex items-center gap-3">
+					<ThemeToggle />
 					{isAuthenticated ? (
 						<button
 							type="button"
