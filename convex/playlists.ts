@@ -161,7 +161,9 @@ export const getPlaylistSubmissionPageData = query({
         .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
         .collect();
 
-      const sortedPlayers = allPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
+      const sortedPlayers = allPlayers.sort(
+        (a, b) => b.totalPoints - a.totalPoints
+      );
       const selectionOrder = [...sortedPlayers].reverse();
 
       // Enrich selections with player info
@@ -185,7 +187,9 @@ export const getPlaylistSubmissionPageData = query({
       const isComplete = selectionsCount >= totalPlayers;
 
       // Get selected options
-      const selectedOptions = new Set(enrichedSelections.map((s) => s.selectedOption));
+      const selectedOptions = new Set(
+        enrichedSelections.map((s) => s.selectedOption)
+      );
       const availableOptions = canonical.options.filter(
         (opt) => !selectedOptions.has(opt)
       );
@@ -224,7 +228,9 @@ export const getPlaylistSubmissionPageData = query({
           ? {
               _id: currentTurnPlayer._id,
               labelName: currentTurnPlayer.labelName,
-              displayName: (await ctx.db.get(currentTurnPlayer.userId))?.displayName || 'Unknown',
+              displayName:
+                (await ctx.db.get(currentTurnPlayer.userId))?.displayName ||
+                'Unknown',
             }
           : null,
       };
@@ -392,7 +398,8 @@ export const submitPlaylist = mutation({
         .collect()
         .then((selections) =>
           selections.find(
-            (s) => s.seasonPlayerId.toString() === playerToSubmitFor._id.toString()
+            (s) =>
+              s.seasonPlayerId.toString() === playerToSubmitFor._id.toString()
           )
         );
 

@@ -206,7 +206,9 @@ export const getDashboardData = query({
       for (const ba of allBoardAdvantages) {
         const canonical = await ctx.db.get(ba.canonicalAdvantageId);
         if (canonical) {
-          const category = advantageBoard.categories.find((c) => c.id === ba.categoryId);
+          const category = advantageBoard.categories.find(
+            (c) => c.id === ba.categoryId
+          );
           if (category) {
             const tierMatch = category.title.match(/Tier (\d+)/);
             if (tierMatch) {

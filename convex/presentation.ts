@@ -505,7 +505,9 @@ export const getPresentationPageData = query({
       .first();
 
     if (challengeSelection) {
-      const boardChallenge = await ctx.db.get(challengeSelection.boardChallengeId);
+      const boardChallenge = await ctx.db.get(
+        challengeSelection.boardChallengeId
+      );
       if (boardChallenge) {
         const canonical = await ctx.db.get(boardChallenge.canonicalChallengeId);
         if (canonical) {

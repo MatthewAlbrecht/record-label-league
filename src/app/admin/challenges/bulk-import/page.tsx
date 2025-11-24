@@ -215,23 +215,23 @@ export default function BulkImportPage() {
 					continue;
 				}
 
-			await createChallengeMutation({
-				title: challenge.title,
-				description: challenge.description,
-				emoji: challenge.emoji,
-				generalVibe: challenge.generalVibe,
-				categoryId: categoryId,
-				constraints: {
-					minTracks: challenge.minTracks || 3,
-					maxTracks: challenge.maxTracks || 8,
-					rules: challenge.rules || [],
-				},
-				awardCategories: addPointsToAwards(challenge.awards),
-				options:
-					challenge.options && challenge.options.length > 0
-						? challenge.options.map((opt) => `${opt.name} — ${opt.description || ""}`)
-						: undefined,
-			});
+				await createChallengeMutation({
+					title: challenge.title,
+					description: challenge.description,
+					emoji: challenge.emoji,
+					generalVibe: challenge.generalVibe,
+					categoryId: categoryId,
+					constraints: {
+						minTracks: challenge.minTracks || 3,
+						maxTracks: challenge.maxTracks || 8,
+						rules: challenge.rules || [],
+					},
+					awardCategories: addPointsToAwards(challenge.awards),
+					options:
+						challenge.options && challenge.options.length > 0
+							? challenge.options.map((opt) => `${opt.name} — ${opt.description || ""}`)
+							: undefined,
+				});
 				successCount++;
 			} catch (err) {
 				failureCount++;

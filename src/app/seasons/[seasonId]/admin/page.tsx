@@ -641,52 +641,52 @@ export default function SeasonAdminPage() {
 					</div>
 				</div>
 
-						{/* Setup Sections (Commissioner Only) */}
-						{isCommissioner && (
-							<>
-								<div className="mb-8">
-									<button
-										onClick={() => router.push(`/seasons/${seasonId}/admin/players`)}
-										className="w-full rounded-lg border-2 border-slate-300 bg-slate-50 p-6 text-left transition hover:bg-slate-100 flex items-center justify-between mb-4"
-									>
-										<div>
-											<h3 className="font-semibold text-lg text-slate-900">
-												View All Players
-											</h3>
-											<p className="mt-2 text-sm text-slate-700">
-												See standings, rosters, and advantages for all players
-											</p>
-										</div>
-										<div className="text-slate-600 ml-4 flex-shrink-0">
-											<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-											</svg>
-										</div>
-									</button>
+				{/* Setup Sections (Commissioner Only) */}
+				{isCommissioner && (
+					<>
+						<div className="mb-8">
+							<button
+								onClick={() => router.push(`/seasons/${seasonId}/admin/players`)}
+								className="w-full rounded-lg border-2 border-slate-300 bg-slate-50 p-6 text-left transition hover:bg-slate-100 flex items-center justify-between mb-4"
+							>
+								<div>
+									<h3 className="font-semibold text-lg text-slate-900">
+										View All Players
+									</h3>
+									<p className="mt-2 text-sm text-slate-700">
+										See standings, rosters, and advantages for all players
+									</p>
 								</div>
-								{season.currentPhase === "SEASON_SETUP" && (
-									<div className="mb-8">
-										<button
-											onClick={() => router.push(`/seasons/${seasonId}/preseason-settings`)}
-											className="w-full rounded-lg border-2 border-purple-300 bg-purple-50 p-6 text-left transition hover:bg-purple-100 flex items-center justify-between mb-4"
-										>
-											<div>
-												<h3 className="font-semibold text-lg text-purple-900">
-													⚙️ Preseason Settings
-												</h3>
-												<p className="mt-2 text-sm text-purple-700">
-													Configure advantage selection requirements for each player
-												</p>
-											</div>
-											<div className="text-purple-600 ml-4 flex-shrink-0">
-												<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-												</svg>
-											</div>
-										</button>
+								<div className="text-slate-600 ml-4 flex-shrink-0">
+									<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+									</svg>
+								</div>
+							</button>
+						</div>
+						{season.currentPhase === "SEASON_SETUP" && (
+							<div className="mb-8">
+								<button
+									onClick={() => router.push(`/seasons/${seasonId}/preseason-settings`)}
+									className="w-full rounded-lg border-2 border-purple-300 bg-purple-50 p-6 text-left transition hover:bg-purple-100 flex items-center justify-between mb-4"
+								>
+									<div>
+										<h3 className="font-semibold text-lg text-purple-900">
+											⚙️ Preseason Settings
+										</h3>
+										<p className="mt-2 text-sm text-purple-700">
+											Configure advantage selection requirements for each player
+										</p>
 									</div>
-								)}
-								<div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+									<div className="text-purple-600 ml-4 flex-shrink-0">
+										<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+										</svg>
+									</div>
+								</button>
+							</div>
+						)}
+						<div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
 							<div className={`rounded-lg border-2 p-6 transition ${boardData?.board?.isLocked
 								? "border-green-300 bg-green-50"
 								: "border-blue-300 bg-blue-50"

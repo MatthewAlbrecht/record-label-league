@@ -61,7 +61,7 @@ export default function AdvantageSelectionPage() {
     // Find the first player who hasn't completed all rounds
     for (let tier = 1; tier <= 3; tier++) {
       const tierCount = tier === 1 ? config.tier1Count : tier === 2 ? config.tier2Count : config.tier3Count;
-      
+
       for (let round = 1; round <= tierCount; round++) {
         // Check if all players have completed this round
         const allPlayersCompletedRound = selectionState.players.every((player) => {
@@ -69,7 +69,7 @@ export default function AdvantageSelectionPage() {
             (pa) => pa.playerId === player._id
           );
           if (!assignment) return false;
-          
+
           const tierAdvantages = assignment.assignedAdvantages.filter(a => a.tier === tier);
           return tierAdvantages.length >= round;
         });
@@ -94,7 +94,7 @@ export default function AdvantageSelectionPage() {
         (pa) => pa.playerId === player._id
       );
       if (!assignment) return true;
-      
+
       const tierAdvantages = assignment.assignedAdvantages.filter(a => a.tier === currentRound.tier);
       return tierAdvantages.length < currentRound.round;
     });
@@ -298,11 +298,11 @@ export default function AdvantageSelectionPage() {
             const currentRoundSelection = currentRoundAdvantages[currentRound.round - 1];
             const currentSelections = currentRoundSelection ? [currentRoundSelection.code] : [];
 
-            const advantages = currentRound.tier === 1 
-              ? selectionState.tier1Advantages 
-              : currentRound.tier === 2 
-              ? selectionState.tier2Advantages 
-              : selectionState.tier3Advantages;
+            const advantages = currentRound.tier === 1
+              ? selectionState.tier1Advantages
+              : currentRound.tier === 2
+                ? selectionState.tier2Advantages
+                : selectionState.tier3Advantages;
 
             if (!advantages || advantages.length === 0) return null;
 

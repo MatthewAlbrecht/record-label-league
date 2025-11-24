@@ -1,6 +1,7 @@
 'use node';
 
 import { action } from '../_generated/server';
+import type { ActionCtx } from '../_generated/server';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { internal } from '../_generated/api';
@@ -15,7 +16,7 @@ export const startPresentationPhase = action({
     seasonId: v.id('seasons'),
     requestingUserId: v.id('users'),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args: { seasonId: Id<'seasons'>; requestingUserId: Id<'users'> }) => {
     // Get season to verify phase
     const season = await ctx.runQuery(internal.seasons.getSeason, {
       seasonId: args.seasonId,

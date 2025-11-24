@@ -62,12 +62,12 @@ export default function PlayerList({
           const tier1Count = assignment?.tier1Count || 0;
           const tier2Count = assignment?.tier2Count || 0;
           const tier3Count = assignment?.tier3Count || 0;
-          
+
           const isComplete =
             tier1Count >= config.tier1Count &&
             tier2Count >= config.tier2Count &&
             tier3Count >= config.tier3Count;
-          
+
           const isCurrentPlayer = index === currentPlayerIndex;
 
           return (
@@ -79,8 +79,8 @@ export default function PlayerList({
                 isCurrentPlayer
                   ? 'border-yellow-400 bg-yellow-50 shadow-md'
                   : isComplete
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
               )}
             >
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -118,8 +118,8 @@ export default function PlayerList({
                         isCurrentSlot
                           ? 'border-yellow-400 bg-yellow-100'
                           : isSlotFilled
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-gray-200 bg-gray-50'
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-200 bg-gray-50'
                       )}
                     >
                       <span className="font-semibold text-gray-700">Tier 1:</span>{' '}
@@ -149,8 +149,8 @@ export default function PlayerList({
                         isCurrentSlot
                           ? 'border-yellow-400 bg-yellow-100'
                           : isSlotFilled
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-gray-200 bg-gray-50'
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-200 bg-gray-50'
                       )}
                     >
                       <span className="font-semibold text-gray-700">Tier 2:</span>{' '}
@@ -180,8 +180,8 @@ export default function PlayerList({
                         isCurrentSlot
                           ? 'border-yellow-400 bg-yellow-100'
                           : isSlotFilled
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-gray-200 bg-gray-50'
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-200 bg-gray-50'
                       )}
                     >
                       <span className="font-semibold text-gray-700">Tier 3:</span>{' '}

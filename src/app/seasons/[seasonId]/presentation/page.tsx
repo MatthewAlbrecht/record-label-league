@@ -167,11 +167,10 @@ export default function PresentationPage() {
               <Card
                 key={player._id}
                 onClick={() => !isSelecting && handleSelectPresenter(player._id)}
-                className={`p-3 border-2 cursor-pointer transition-all ${
-                  isSelecting
+                className={`p-3 border-2 cursor-pointer transition-all ${isSelecting
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:border-blue-400 hover:shadow-lg border-gray-300'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -279,13 +278,12 @@ export default function PresentationPage() {
               <Card
                 key={track._id}
                 onClick={() => isNextToReveal && !isRevealing && handleTrackClick(index)}
-                className={`p-2 border-2 relative overflow-hidden ${
-                  isRevealed
+                className={`p-2 border-2 relative overflow-hidden ${isRevealed
                     ? 'border-gray-300 bg-white'
                     : isNextToReveal
                       ? 'border-blue-400 bg-blue-50 cursor-pointer hover:border-blue-500'
                       : 'border-gray-200 bg-gray-100'
-                }`}
+                  }`}
               >
                 {/* Track Content - Always visible */}
                 <div className="flex gap-3 items-center relative z-10">
@@ -310,9 +308,8 @@ export default function PresentationPage() {
 
                 {/* Blurred Overlay - Always rendered but fades out */}
                 <div
-                  className={`absolute inset-0 z-20 flex items-center justify-center ${
-                    isRevealed ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                  }`}
+                  className={`absolute inset-0 z-20 flex items-center justify-center ${isRevealed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                    }`}
                   style={{
                     backdropFilter: `blur(${blurIntensity}px)`,
                     WebkitBackdropFilter: `blur(${blurIntensity}px)`,
