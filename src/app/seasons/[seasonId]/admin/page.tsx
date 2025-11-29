@@ -686,6 +686,26 @@ export default function SeasonAdminPage() {
 								</button>
 							</div>
 						)}
+						<div className="mb-8">
+							<button
+								onClick={() => router.push(`/seasons/${seasonId}/admin/advantage-settings`)}
+								className="w-full rounded-lg border-2 border-teal-300 bg-teal-50 p-6 text-left transition hover:bg-teal-100 flex items-center justify-between"
+							>
+								<div>
+									<h3 className="font-semibold text-lg text-teal-900">
+										🎁 Advantage Distribution Settings
+									</h3>
+									<p className="mt-2 text-sm text-teal-700">
+										Configure how advantages are awarded based on placement and sweeps
+									</p>
+								</div>
+								<div className="text-teal-600 ml-4 flex-shrink-0">
+									<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+									</svg>
+								</div>
+							</button>
+						</div>
 						<div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
 							<div className={`rounded-lg border-2 p-6 transition ${boardData?.board?.isLocked
 								? "border-green-300 bg-green-50"

@@ -149,6 +149,7 @@ export default function StandingsPage() {
                 <th className="px-4 py-2 text-left text-xs font-bold text-gray-900">Label</th>
                 <th className="px-4 py-2 text-left text-xs font-bold text-gray-900">Player</th>
                 <th className="w-20 px-3 py-2 text-right text-xs font-bold text-gray-900">Points</th>
+                <th className="px-3 py-2 text-right text-xs font-bold text-gray-900 hidden sm:table-cell">Record</th>
               </tr>
             </thead>
             <tbody>
@@ -187,6 +188,9 @@ export default function StandingsPage() {
                       <p className="text-sm font-bold text-gray-900">
                         {player.totalPoints}
                       </p>
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs text-gray-500 hidden sm:table-cell">
+                      {player.record?.wins || 0}-{player.record?.seconds || 0}-{player.record?.thirds || 0}-{player.record?.fourths || 0}
                     </td>
                   </tr>
                 );

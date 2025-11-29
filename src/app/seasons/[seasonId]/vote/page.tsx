@@ -203,8 +203,9 @@ export default function VotingPage() {
       });
 
       if (result.isComplete) {
-        toast.success('All voting complete! Calculating results...');
-        // TODO: Navigate to results page when Epic 4 is complete
+        toast.success('All voting complete! Results calculated.');
+        // Navigate to results page
+        router.push(`/seasons/${seasonId}/results/${season.currentWeek}`);
       } else {
         toast.success('Category results revealed!');
       }
@@ -387,7 +388,15 @@ export default function VotingPage() {
         </Card>
 
         <Card className="p-6 mt-6 bg-green-50 border-green-200">
-          <p className="text-green-900 font-semibold">Results are being calculated...</p>
+          <div className="flex items-center justify-between">
+            <p className="text-green-900 font-semibold">✓ Results have been calculated!</p>
+            <Button
+              onClick={() => router.push(`/seasons/${seasonId}/results/${season.currentWeek}`)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              View Results
+            </Button>
+          </div>
         </Card>
       </div>
     );

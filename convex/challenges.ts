@@ -921,6 +921,48 @@ export const getCurrentChallenge = query({
   },
 });
 
+// Query: Get challenge for a specific week
+export const getChallengeByWeek = query({
+  args: {
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Get the selection for specified week
+    const selection = await ctx.db
+      .query('challenge_selections')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', args.weekNumber)
+      )
+      .first();
+
+    if (!selection) {
+      return null;
+    }
+
+    // Get board challenge
+    const boardChallenge = await ctx.db.get(selection.boardChallengeId);
+    if (!boardChallenge) {
+      return null;
+    }
+
+    // Get canonical challenge details
+    const canonical = await ctx.db.get(boardChallenge.canonicalChallengeId);
+    if (!canonical) {
+      return null;
+    }
+
+    return {
+      weekNumber: args.weekNumber,
+      challenge: {
+        _id: canonical._id,
+        emoji: canonical.emoji,
+        title: canonical.title,
+      },
+    };
+  },
+});
+
 // Query: Get option selection status for current challenge
 export const getOptionSelectionStatus = query({
   args: {

@@ -27,15 +27,79 @@ export default function AdvantageSelectionPage() {
   const { user } = useAuth();
   const seasonId = (params?.seasonId as string) || '';
 
+  // First, check what kind of selection we need
+  const pendingSelections = useQuery(api.inventory.getPendingAdvantageSelections, {
+    seasonId: seasonId as Id<'seasons'>,
+  });
+
   const season = useQuery(api.seasons.getSeason, {
     seasonId: seasonId as Id<'seasons'>,
   });
 
-  const selectionState = useQuery(api.inventory.getAdvantageSelectionState, {
-    seasonId: seasonId as Id<'seasons'>,
-  });
+  const isCommissioner = season?.league?.commissioner?.id === user?.id;
 
-  const assignAdvantage = useMutation(api.inventory.assignStartingAdvantage);
+  // Based on pending selections, determine what to render
+  if (pendingSelections === undefined) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isCommissioner) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-10">
+        <p className="text-red-500">Only the commissioner can access this page</p>
+        <Button onClick={() => router.push('/')} className="mt-4">
+          Back to Dashboard
+        </Button>
+      </main>
+    );
+  }
+
+  if (pendingSelections === null) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-10">
+        <Card className="p-6 bg-gray-50 border-gray-200">
+          <div className="text-center">
+            <p className="text-xl font-semibold text-gray-900 mb-3">
+              ✅ No Pending Selections
+            </p>
+            <p className="text-gray-600 mb-6">
+              All advantages have been selected. There are no pending selections at this time.
+            </p>
+            <Button onClick={() => router.push(`/seasons/${seasonId}`)} variant="outline">
+              Back to Season
+            </Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  // Render the appropriate selection view
+  if (pendingSelections.mode === 'starting') {
+    return <StartingAdvantageSelection seasonId={seasonId as Id<'seasons'>} />;
+  }
+
+  return (
+    <WeeklyAdvantageSelection
+      seasonId={seasonId as Id<'seasons'>}
+      weekNumber={pendingSelections.weekNumber!}
+    />
+  );
+}
+
+// Component for starting advantage selection (pre-season)
+function StartingAdvantageSelection({ seasonId }: { seasonId: Id<'seasons'> }) {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const selectionState = useQuery(api.inventory.getAdvantageSelectionState, { seasonId });
+  const season = useQuery(api.seasons.getSeason, { seasonId });
+
+  const assignStartingAdvantage = useMutation(api.inventory.assignStartingAdvantage);
   const resetAllAdvantages = useMutation(api.inventory.resetAllStartingAdvantages);
   const startSeason = useMutation(api.seasons.startSeason);
 
@@ -45,11 +109,7 @@ export default function AdvantageSelectionPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [error, setError] = useState('');
-
-  // Round state: { tier: 1, round: 1 } for Tier 1 Round 1, { tier: 1, round: 2 } for Tier 1 Round 2, etc.
   const [currentRound, setCurrentRound] = useState<{ tier: number; round: number } | null>(null);
-
-  const isCommissioner = season?.league?.commissioner?.id === user?.id;
 
   const currentPlayer = selectionState?.players[currentPlayerIndex];
   const config = selectionState?.config || { tier1Count: 2, tier2Count: 1, tier3Count: 0 };
@@ -58,18 +118,15 @@ export default function AdvantageSelectionPage() {
   useEffect(() => {
     if (!selectionState) return;
 
-    // Find the first player who hasn't completed all rounds
     for (let tier = 1; tier <= 3; tier++) {
       const tierCount = tier === 1 ? config.tier1Count : tier === 2 ? config.tier2Count : config.tier3Count;
 
       for (let round = 1; round <= tierCount; round++) {
-        // Check if all players have completed this round
         const allPlayersCompletedRound = selectionState.players.every((player) => {
           const assignment = selectionState.playerAssignments.find(
             (pa) => pa.playerId === player._id
           );
           if (!assignment) return false;
-
           const tierAdvantages = assignment.assignedAdvantages.filter(a => a.tier === tier);
           return tierAdvantages.length >= round;
         });
@@ -80,8 +137,6 @@ export default function AdvantageSelectionPage() {
         }
       }
     }
-
-    // All rounds completed
     setCurrentRound(null);
   }, [selectionState, config]);
 
@@ -94,7 +149,6 @@ export default function AdvantageSelectionPage() {
         (pa) => pa.playerId === player._id
       );
       if (!assignment) return true;
-
       const tierAdvantages = assignment.assignedAdvantages.filter(a => a.tier === currentRound.tier);
       return tierAdvantages.length < currentRound.round;
     });
@@ -105,12 +159,13 @@ export default function AdvantageSelectionPage() {
   }, [currentRound, selectionState]);
 
   const handleAssignAdvantage = async (advantageCode: string) => {
-    if (!currentPlayer || !currentRound || !selectionState) return;
+    if (!currentPlayer || !selectionState || !currentRound) return;
 
     try {
       setIsAssigning(true);
       setError('');
-      await assignAdvantage({
+
+      await assignStartingAdvantage({
         seasonPlayerId: currentPlayer._id,
         advantageCode,
         requestingUserId: user?.id as Id<'users'>,
@@ -130,10 +185,8 @@ export default function AdvantageSelectionPage() {
       });
 
       if (nextPlayerIndex !== -1) {
-        // Move to next player in this round
         setCurrentPlayerIndex(nextPlayerIndex);
       } else {
-        // Round complete, will advance to next round via useEffect
         toast.success(`Tier ${currentRound.tier} Round ${currentRound.round} complete!`);
       }
     } catch (err) {
@@ -150,7 +203,7 @@ export default function AdvantageSelectionPage() {
       setIsResetting(true);
       setError('');
       await resetAllAdvantages({
-        seasonId: seasonId as Id<'seasons'>,
+        seasonId,
         requestingUserId: user?.id as Id<'users'>,
       });
 
@@ -172,12 +225,11 @@ export default function AdvantageSelectionPage() {
       setIsStarting(true);
       setError('');
       await startSeason({
-        seasonId: seasonId as Id<'seasons'>,
+        seasonId,
         requesterId: user?.id as Id<'users'>,
       });
 
       toast.success('Season started! Entering challenge selection...');
-      // Redirect to challenge selection page
       setTimeout(() => {
         router.push(`/seasons/${seasonId}/challenge-select`);
       }, 1000);
@@ -190,17 +242,6 @@ export default function AdvantageSelectionPage() {
     }
   };
 
-  if (!isCommissioner) {
-    return (
-      <main className="mx-auto max-w-7xl px-4 py-10">
-        <p className="text-red-500">Only the commissioner can access this page</p>
-        <Button onClick={() => router.push('/')} className="mt-4">
-          Back to Dashboard
-        </Button>
-      </main>
-    );
-  }
-
   if (!selectionState) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -209,7 +250,6 @@ export default function AdvantageSelectionPage() {
     );
   }
 
-  // Check if all players have completed their selections based on config
   const allPlayersAssigned = selectionState.players.every((player) => {
     const assignment = selectionState.playerAssignments.find(
       (pa) => pa.playerId === player._id
@@ -226,22 +266,21 @@ export default function AdvantageSelectionPage() {
     <main className="mx-auto max-w-7xl px-4 py-10">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="font-semibold text-3xl">{season?.name} - Advantage Selection</h1>
+          <h1 className="font-semibold text-3xl">{season?.name} - Starting Advantage Selection</h1>
           <p className="mt-2 text-gray-600">
-            Assign advantages to each player: {config.tier1Count} Tier 1, {config.tier2Count} Tier 2{config.tier3Count > 0 ? `, ${config.tier3Count} Tier 3` : ''}
+            Assign advantages to each player: {config.tier1Count} Tier 1, {config.tier2Count} Tier 2
+            {config.tier3Count > 0 ? `, ${config.tier3Count} Tier 3` : ''}
           </p>
         </div>
-        {isCommissioner && (
-          <Button
-            onClick={() => setShowResetDialog(true)}
-            variant="destructive"
-            size="sm"
-            className="mt-2"
-            disabled={isResetting || isAssigning}
-          >
-            🔧 Reset All
-          </Button>
-        )}
+        <Button
+          onClick={() => setShowResetDialog(true)}
+          variant="destructive"
+          size="sm"
+          className="mt-2"
+          disabled={isResetting || isAssigning}
+        >
+          🔧 Reset All
+        </Button>
       </div>
 
       {error && (
@@ -251,7 +290,6 @@ export default function AdvantageSelectionPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar with Player List */}
         <div className="order-first lg:order-last lg:col-span-1">
           <PlayerList
             players={selectionState.players}
@@ -263,7 +301,6 @@ export default function AdvantageSelectionPage() {
           />
         </div>
 
-        {/* Main Advantage Board */}
         <div className="lg:col-span-3 space-y-6 order-last lg:order-first">
           {currentPlayer && currentRound && (() => {
             const assignment = selectionState.playerAssignments.find(
@@ -278,7 +315,7 @@ export default function AdvantageSelectionPage() {
                   🎯 Assigning to: {currentPlayer.labelName}
                 </h2>
                 <p className="text-yellow-800 mt-2">
-                  {currentPlayer.user.displayName}, select Tier {currentRound.tier} Round {currentRound.round}
+                  {currentPlayer.user?.displayName || currentPlayer.labelName}, select Tier {currentRound.tier} Round {currentRound.round}
                 </p>
                 {currentRoundSelection && (
                   <p className="text-yellow-700 mt-2 text-sm">
@@ -289,7 +326,6 @@ export default function AdvantageSelectionPage() {
             );
           })()}
 
-          {/* Display advantage board for current round only */}
           {currentRound && currentPlayer && (() => {
             const assignment = selectionState.playerAssignments.find(
               (pa) => pa.playerId === currentPlayer._id
@@ -312,19 +348,16 @@ export default function AdvantageSelectionPage() {
                 advantages={advantages}
                 maxSelections={1}
                 currentSelections={currentSelections}
-                onSelectAdvantage={handleAssignAdvantage}
+                onSelectAdvantage={(code: string) => handleAssignAdvantage(code)}
                 isLoading={isAssigning}
                 disabled={!currentPlayer}
               />
             );
           })()}
 
-          {/* Navigation Buttons */}
           <div className="flex gap-4 justify-between">
             <Button
-              onClick={() =>
-                setCurrentPlayerIndex(Math.max(0, currentPlayerIndex - 1))
-              }
+              onClick={() => setCurrentPlayerIndex(Math.max(0, currentPlayerIndex - 1))}
               variant="outline"
               disabled={currentPlayerIndex === 0 || isAssigning}
             >
@@ -344,18 +377,10 @@ export default function AdvantageSelectionPage() {
 
             <Button
               onClick={() =>
-                setCurrentPlayerIndex(
-                  Math.min(
-                    selectionState.players.length - 1,
-                    currentPlayerIndex + 1
-                  )
-                )
+                setCurrentPlayerIndex(Math.min(selectionState.players.length - 1, currentPlayerIndex + 1))
               }
               variant="outline"
-              disabled={
-                currentPlayerIndex === selectionState.players.length - 1 ||
-                isAssigning
-              }
+              disabled={currentPlayerIndex === selectionState.players.length - 1 || isAssigning}
             >
               Next Player →
             </Button>
@@ -368,7 +393,7 @@ export default function AdvantageSelectionPage() {
                   ✅ Advantage Selection Complete!
                 </p>
                 <p className="text-green-800 mb-6">
-                  All players have been assigned their starting advantages ({config.tier1Count} Tier 1{config.tier2Count > 0 ? `, ${config.tier2Count} Tier 2` : ''}{config.tier3Count > 0 ? `, ${config.tier3Count} Tier 3` : ''}). Ready to begin the season!
+                  All players have been assigned their starting advantages. Ready to begin the season!
                 </p>
                 <div className="flex gap-4 justify-center">
                   <Button
@@ -379,10 +404,7 @@ export default function AdvantageSelectionPage() {
                   >
                     {isStarting ? '🚀 Starting Season...' : '🚀 Start Season'}
                   </Button>
-                  <Button
-                    onClick={() => router.push(`/seasons/${seasonId}`)}
-                    variant="outline"
-                  >
+                  <Button onClick={() => router.push(`/seasons/${seasonId}`)} variant="outline">
                     Back to Season
                   </Button>
                 </div>
@@ -392,22 +414,16 @@ export default function AdvantageSelectionPage() {
         </div>
       </div>
 
-      {/* Reset Confirmation Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset All Advantages?</DialogTitle>
             <DialogDescription>
               This will clear all starting advantages for every player in this season. This action cannot be undone.
-              Are you sure?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              onClick={() => setShowResetDialog(false)}
-              variant="outline"
-              disabled={isResetting}
-            >
+            <Button onClick={() => setShowResetDialog(false)} variant="outline" disabled={isResetting}>
               Cancel
             </Button>
             <Button
@@ -424,3 +440,317 @@ export default function AdvantageSelectionPage() {
   );
 }
 
+// Component for weekly advantage selection (in-season)
+function WeeklyAdvantageSelection({
+  seasonId,
+  weekNumber,
+}: {
+  seasonId: Id<'seasons'>;
+  weekNumber: number;
+}) {
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const selectionState = useQuery(api.inventory.getWeeklyAdvantageSelectionState, {
+    seasonId,
+    weekNumber,
+  });
+  const season = useQuery(api.seasons.getSeason, { seasonId });
+
+  const assignWeeklyAdvantage = useMutation(api.inventory.assignWeeklyAdvantage);
+
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [error, setError] = useState('');
+
+  // Find first player with pending awards
+  useEffect(() => {
+    if (!selectionState) return;
+
+    const firstPlayerWithPending = selectionState.players.findIndex((player) => {
+      const assignment = selectionState.playerAssignments.find(
+        (pa) => pa.playerId === player._id
+      );
+      return assignment && 'pendingAwards' in assignment && assignment.pendingAwards.length > 0;
+    });
+
+    if (firstPlayerWithPending !== -1) {
+      setCurrentPlayerIndex(firstPlayerWithPending);
+    }
+  }, [selectionState]);
+
+  const currentPlayer = selectionState?.players[currentPlayerIndex];
+
+  const handleAssignAdvantage = async (advantageCode: string, awardId: Id<'advantage_awards'>) => {
+    if (!currentPlayer || !selectionState) return;
+
+    try {
+      setIsAssigning(true);
+      setError('');
+
+      await assignWeeklyAdvantage({
+        awardId,
+        advantageCode,
+        requestingUserId: user?.id as Id<'users'>,
+      });
+
+      toast.success(`Assigned ${advantageCode} to ${currentPlayer.labelName}`);
+
+      // Move to next player with pending awards after a short delay (to allow state to update)
+      setTimeout(() => {
+        const nextPlayerIndex = selectionState.players.findIndex((player, index) => {
+          if (index <= currentPlayerIndex) return false;
+          const assignment = selectionState.playerAssignments.find(
+            (pa) => pa.playerId === player._id
+          );
+          return assignment && 'pendingAwards' in assignment && assignment.pendingAwards.length > 0;
+        });
+
+        if (nextPlayerIndex !== -1) {
+          setCurrentPlayerIndex(nextPlayerIndex);
+        }
+      }, 100);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to assign advantage';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  if (!selectionState) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Check if all selections are complete
+  const allSelectionsComplete = selectionState.players.every((player) => {
+    const assignment = selectionState.playerAssignments.find(
+      (pa) => pa.playerId === player._id
+    );
+    return !assignment || !('pendingAwards' in assignment) || assignment.pendingAwards.length === 0;
+  });
+
+  // Get current player's pending awards
+  const currentAssignment = selectionState.playerAssignments.find(
+    (pa) => pa.playerId === currentPlayer?._id
+  );
+  const pendingAwards = currentAssignment && 'pendingAwards' in currentAssignment
+    ? currentAssignment.pendingAwards
+    : [];
+
+  // Current pending award to select
+  const currentPendingAward = pendingAwards[0];
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-10">
+      <div className="mb-8">
+        <h1 className="font-semibold text-3xl">{season?.name} - Week {weekNumber} Advantage Selection</h1>
+        <p className="mt-2 text-gray-600">
+          Select advantages for players based on their Week {weekNumber} performance
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {allSelectionsComplete ? (
+        <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-900 mb-3">
+              ✅ Week {weekNumber} Advantage Selection Complete!
+            </p>
+            <p className="text-green-800 mb-6">
+              All players have been assigned their weekly advantages.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={() => router.push(`/seasons/${seasonId}/results/${weekNumber}`)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                View Results
+              </Button>
+              <Button onClick={() => router.push(`/seasons/${seasonId}`)} variant="outline">
+                Back to Season
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="order-first lg:order-last lg:col-span-1">
+            <WeeklyPlayerList
+              players={selectionState.players}
+              playerAssignments={selectionState.playerAssignments}
+              currentPlayerIndex={currentPlayerIndex}
+              onSelectPlayer={setCurrentPlayerIndex}
+            />
+          </div>
+
+          <div className="lg:col-span-3 space-y-6 order-last lg:order-first">
+            {currentPlayer && currentPendingAward && (
+              <>
+                <Card className="p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300">
+                  <h2 className="text-2xl font-bold text-yellow-900">
+                    🎯 Assigning to: {currentPlayer.labelName}
+                  </h2>
+                  <p className="text-yellow-800 mt-2">
+                    Select a Tier {currentPendingAward.tier} advantage
+                    <span className="ml-2 text-sm">
+                      ({currentPendingAward.awardedVia === 'SWEEP' ? '🧹 Sweep' : `🏅 ${getOrdinal(currentPendingAward.placementRank)} place`})
+                    </span>
+                  </p>
+                  {pendingAwards.length > 1 && (
+                    <p className="text-yellow-700 mt-1 text-sm">
+                      {pendingAwards.length} selections remaining for this player
+                    </p>
+                  )}
+                </Card>
+
+                {(() => {
+                  const advantages = currentPendingAward.tier === 1
+                    ? selectionState.tier1Advantages
+                    : currentPendingAward.tier === 2
+                      ? selectionState.tier2Advantages
+                      : selectionState.tier3Advantages;
+
+                  if (!advantages || advantages.length === 0) return null;
+
+                  return (
+                    <AdvantageBoard
+                      tier={currentPendingAward.tier}
+                      advantages={advantages}
+                      maxSelections={1}
+                      currentSelections={[]}
+                      onSelectAdvantage={(code: string) =>
+                        handleAssignAdvantage(code, currentPendingAward._id)
+                      }
+                      isLoading={isAssigning}
+                      disabled={!currentPlayer}
+                    />
+                  );
+                })()}
+              </>
+            )}
+
+            {!currentPendingAward && currentPlayer && (
+              <Card className="p-6 bg-gray-50 border-gray-200">
+                <div className="text-center">
+                  <p className="text-gray-600">
+                    {currentPlayer.labelName} has no pending selections.
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Select another player from the list, or go back to results.
+                  </p>
+                </div>
+              </Card>
+            )}
+
+            <div className="flex gap-4 justify-between">
+              <Button
+                onClick={() => setCurrentPlayerIndex(Math.max(0, currentPlayerIndex - 1))}
+                variant="outline"
+                disabled={currentPlayerIndex === 0 || isAssigning}
+              >
+                ← Previous Player
+              </Button>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Player {currentPlayerIndex + 1} of {selectionState.players.length}
+                </p>
+              </div>
+
+              <Button
+                onClick={() =>
+                  setCurrentPlayerIndex(Math.min(selectionState.players.length - 1, currentPlayerIndex + 1))
+                }
+                variant="outline"
+                disabled={currentPlayerIndex === selectionState.players.length - 1 || isAssigning}
+              >
+                Next Player →
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// Helper component to show weekly player list with pending indicators
+function WeeklyPlayerList({
+  players,
+  playerAssignments,
+  currentPlayerIndex,
+  onSelectPlayer,
+}: {
+  players: Array<{ _id: Id<'season_players'>; labelName: string; user?: { displayName: string } | null }>;
+  playerAssignments: Array<{
+    playerId: Id<'season_players'>;
+    pendingAwards?: Array<{ tier: number }>;
+    assignedAdvantages?: Array<{ tier: number }>;
+  }>;
+  currentPlayerIndex: number;
+  onSelectPlayer: (index: number) => void;
+}) {
+  return (
+    <Card className="p-4">
+      <h3 className="font-semibold text-lg mb-4">Players</h3>
+      <div className="space-y-2">
+        {players.map((player, index) => {
+          const assignment = playerAssignments.find((pa) => pa.playerId === player._id);
+          const pendingCount = assignment && 'pendingAwards' in assignment
+            ? assignment.pendingAwards?.length || 0
+            : 0;
+          const assignedCount = assignment?.assignedAdvantages?.length || 0;
+          const isComplete = pendingCount === 0 && assignedCount > 0;
+          const hasNoPendingOrAssigned = pendingCount === 0 && assignedCount === 0;
+
+          return (
+            <button
+              key={player._id}
+              onClick={() => onSelectPlayer(index)}
+              className={`w-full p-3 rounded-lg text-left transition ${
+                index === currentPlayerIndex
+                  ? 'bg-yellow-100 border-2 border-yellow-400'
+                  : isComplete
+                    ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                    : hasNoPendingOrAssigned
+                      ? 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                      : 'bg-white border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{player.labelName}</p>
+                  <p className="text-xs text-gray-500">{player.user?.displayName}</p>
+                </div>
+                <div className="text-right">
+                  {isComplete && <span className="text-green-600 text-sm">✓</span>}
+                  {pendingCount > 0 && (
+                    <span className="text-amber-600 text-sm font-medium">{pendingCount} pending</span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function getOrdinal(n: number | undefined): string {
+  if (n === undefined) return '';
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}

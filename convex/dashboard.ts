@@ -460,15 +460,37 @@ export const getStandingsPageData = query({
       .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
       .collect();
 
+    // Get all weekly results for this season
+    const allResults = await ctx.db
+      .query('weekly_results')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId)
+      )
+      .collect();
+
     // Sort by total points (descending) to get standings
     const sortedPlayers = allPlayers.sort(
       (a, b) => b.totalPoints - a.totalPoints
     );
 
-    // Enrich with user details and rank
+    // Enrich with user details, rank, and record
     const playersWithRank = await Promise.all(
       sortedPlayers.map(async (player, index) => {
         const user = await ctx.db.get(player.userId);
+
+        // Get this player's weekly results
+        const playerResults = allResults.filter(
+          (r) => r.seasonPlayerId.toString() === player._id.toString()
+        );
+
+        // Calculate record: wins (1st), seconds (2nd), thirds (3rd), fourths (4th)
+        const record = {
+          wins: playerResults.filter((r) => r.placement === 1).length,
+          seconds: playerResults.filter((r) => r.placement === 2).length,
+          thirds: playerResults.filter((r) => r.placement === 3).length,
+          fourths: playerResults.filter((r) => r.placement === 4).length,
+        };
+
         return {
           _id: player._id,
           rank: index + 1,
@@ -476,6 +498,7 @@ export const getStandingsPageData = query({
           displayName: user?.displayName || 'Unknown',
           totalPoints: player.totalPoints,
           draftPosition: player.draftPosition,
+          record,
         };
       })
     );
@@ -586,5 +609,104 @@ export const getAllPlayersRosters = query({
 
     // Sort by total points descending
     return playersWithRosters.sort((a, b) => b.totalPoints - a.totalPoints);
+  },
+});
+
+// Get season standings with weekly record
+export const getSeasonStandings = query({
+  args: {
+    seasonId: v.id('seasons'),
+  },
+  handler: async (ctx, args) => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) {
+      throw new Error('Season not found');
+    }
+
+    // Get all season players
+    const seasonPlayers = await ctx.db
+      .query('season_players')
+      .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
+      .collect();
+
+    // Get all weekly results for this season
+    const allResults = await ctx.db
+      .query('weekly_results')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId)
+      )
+      .collect();
+
+    // Build standings with weekly record
+    const standings = await Promise.all(
+      seasonPlayers.map(async (player) => {
+        const user = await ctx.db.get(player.userId);
+
+        // Get this player's weekly results
+        const playerResults = allResults.filter(
+          (r) => r.seasonPlayerId.toString() === player._id.toString()
+        );
+
+        // Calculate record: wins (1st), seconds (2nd), thirds (3rd), fourths (4th)
+        const record = {
+          wins: playerResults.filter((r) => r.placement === 1).length,
+          seconds: playerResults.filter((r) => r.placement === 2).length,
+          thirds: playerResults.filter((r) => r.placement === 3).length,
+          fourths: playerResults.filter((r) => r.placement === 4).length,
+        };
+
+        // Get weekly history
+        const weeklyHistory = playerResults
+          .map((r) => ({
+            weekNumber: r.weekNumber,
+            placement: r.placement,
+            votingPoints: r.votingPoints,
+            victoryPoints: r.victoryPoints,
+          }))
+          .sort((a, b) => a.weekNumber - b.weekNumber);
+
+        return {
+          _id: player._id,
+          labelName: player.labelName,
+          displayName: user?.displayName || 'Unknown',
+          totalVictoryPoints: player.totalPoints,
+          record,
+          weeklyHistory,
+        };
+      })
+    );
+
+    // Sort by total victory points (descending) and assign placements
+    const sorted = standings.sort(
+      (a, b) => b.totalVictoryPoints - a.totalVictoryPoints
+    );
+
+    // Assign placements with tie handling
+    let currentPlacement = 1;
+    const withPlacements = sorted.map((player, index) => {
+      const prevPlayer = index > 0 ? sorted[index - 1] : null;
+      if (
+        prevPlayer &&
+        player.totalVictoryPoints === prevPlayer.totalVictoryPoints
+      ) {
+        // Tie - keep same placement
+      } else {
+        currentPlacement = index + 1;
+      }
+      return {
+        ...player,
+        placement: currentPlacement,
+      };
+    });
+
+    return {
+      season: {
+        _id: season._id,
+        name: season.name,
+        currentWeek: season.currentWeek,
+        status: season.status,
+      },
+      standings: withPlacements,
+    };
   },
 });

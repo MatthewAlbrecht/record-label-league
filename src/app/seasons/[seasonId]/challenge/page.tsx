@@ -18,9 +18,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '~/components/ui/dialog';
-import { Loader2, AlertCircle, CheckCircle, CheckCircle2, Music, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, CheckCircle2, Music, Trash2, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import Link from 'next/link';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import OptionSelectionBoard from './components/option-selection-board';
@@ -698,6 +699,17 @@ export default function PlaylistSubmissionPage() {
     seasonId: seasonId as Id<'seasons'>,
   });
 
+  // Get voting session to check if voting is complete
+  const votingSession = useQuery(
+    api.voting.getVotingSession,
+    seasonData?.currentPhase === 'VOTING'
+      ? {
+          seasonId: seasonId as Id<'seasons'>,
+          weekNumber: seasonData.currentWeek,
+        }
+      : 'skip'
+  );
+
   if (!user || !seasonData) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -974,7 +986,26 @@ export default function PlaylistSubmissionPage() {
           </Card>
         )}
 
-        {season.currentPhase === 'VOTING' && (
+        {season.currentPhase === 'VOTING' && votingSession?.status === 'CLOSED' && (
+          <Card className="p-4 border-yellow-200 bg-yellow-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-yellow-600" />
+                <div>
+                  <h3 className="font-semibold text-yellow-900 mb-1">Voting Complete!</h3>
+                  <p className="text-sm text-yellow-800">Results have been calculated for Week {season.currentWeek}</p>
+                </div>
+              </div>
+              <Link href={`/seasons/${seasonId}/results/${season.currentWeek}`}>
+                <Button className="bg-yellow-600 hover:bg-yellow-700">
+                  View Results →
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
+        {season.currentPhase === 'VOTING' && votingSession?.status !== 'CLOSED' && (
           <Card className="p-4 border-green-200 bg-green-50">
             <div className="flex items-center justify-between">
               <div>

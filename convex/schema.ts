@@ -244,6 +244,7 @@ export default defineSchema({
   player_inventory: defineTable({
     seasonPlayerId: v.id('season_players'),
     advantageCode: v.string(), // References canonical_advantages.code
+    tier: v.optional(v.union(v.literal(1), v.literal(2), v.literal(3))), // Optional for backwards compat
     status: v.union(
       v.literal('AVAILABLE'),
       v.literal('PLAYED'),
@@ -255,8 +256,58 @@ export default defineSchema({
       v.literal('SWEEP'),
       v.literal('STARTING')
     ),
+    canUseAfterWeek: v.optional(v.number()), // Cooldown: 0 = usable immediately, optional for backwards compat
     createdAt: v.number(),
   }).index('by_seasonPlayerId', ['seasonPlayerId']),
+
+  // Advantage distribution settings per season
+  advantage_distribution_settings: defineTable({
+    seasonId: v.id('seasons'),
+    // Placement-based rewards: array allows multiple advantages per placement
+    placementRewards: v.array(
+      v.object({
+        placement: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4)),
+        tier: v.union(v.literal(1), v.literal(2), v.literal(3)),
+        count: v.number(),
+      })
+    ),
+    // Sweep rewards configuration
+    sweepRewards: v.array(
+      v.object({
+        categoryPointValue: v.union(v.literal(1), v.literal(2), v.literal(3)),
+        tier: v.union(v.literal(1), v.literal(2), v.literal(3)),
+        count: v.number(),
+      })
+    ),
+    sweepsStack: v.boolean(), // true = player can earn multiple sweep advantages
+    maxSweepAdvantagesPerWeek: v.optional(v.number()), // optional cap if stacking enabled
+    // Cooldown configuration
+    cooldownByTier: v.array(
+      v.object({
+        tier: v.union(v.literal(1), v.literal(2), v.literal(3)),
+        weeksDelay: v.number(), // 0 = usable immediately, 1 = next week, etc.
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_seasonId', ['seasonId']),
+
+  // Advantage awards (tracks all advantages awarded each week)
+  advantage_awards: defineTable({
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+    seasonPlayerId: v.id('season_players'),
+    advantageCode: v.string(),
+    tier: v.union(v.literal(1), v.literal(2), v.literal(3)),
+    awardedVia: v.union(v.literal('PLACEMENT'), v.literal('SWEEP')),
+    placementRank: v.optional(v.number()), // if from placement, 1-4
+    sweepCategoryId: v.optional(v.string()), // if from sweep
+    earnedWeek: v.number(),
+    canUseAfterWeek: v.number(), // based on cooldown config
+    createdAt: v.number(),
+  })
+    .index('by_seasonPlayerId', ['seasonPlayerId'])
+    .index('by_seasonId_weekNumber', ['seasonId', 'weekNumber']),
 
   // Event logging system
   game_events: defineTable({
@@ -389,6 +440,28 @@ export default defineSchema({
     .index('by_sessionId', ['sessionId'])
     .index('by_voterId_sessionId', ['voterId', 'sessionId'])
     .index('by_categoryId_sessionId', ['categoryId', 'sessionId']),
+
+  // Weekly results (calculated after voting closes)
+  weekly_results: defineTable({
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+    seasonPlayerId: v.id('season_players'),
+    votingPoints: v.number(), // votes × category weights
+    placement: v.number(), // 1, 2, 3, 4
+    victoryPoints: v.number(), // 5, 3, 2, 1
+    breakdown: v.array(
+      v.object({
+        categoryId: v.string(),
+        categoryTitle: v.string(),
+        votes: v.number(),
+        pointValue: v.union(v.literal(1), v.literal(2), v.literal(3)),
+        pointsEarned: v.number(),
+      })
+    ),
+    createdAt: v.number(),
+  })
+    .index('by_seasonId_weekNumber', ['seasonId', 'weekNumber'])
+    .index('by_seasonPlayerId', ['seasonPlayerId']),
 
   // Example table for demonstration
   todos: defineTable({

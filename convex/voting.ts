@@ -431,7 +431,8 @@ export const revealCategoryResults = mutation({
         args.requestingUserId
       );
 
-      // TODO: Trigger calculateResults() - placeholder for Epic 4
+      // Calculate results after voting closes
+      await calculateResultsInternal(ctx, args.seasonId, args.weekNumber);
     } else {
       // Set status back to PENDING (will be set to OPEN when next category starts)
       await ctx.db.patch(session._id, {
@@ -551,7 +552,8 @@ export const closeVotingSession = mutation({
       args.requestingUserId
     );
 
-    // TODO: Trigger calculateResults() - placeholder for Epic 4
+    // Calculate results after voting closes
+    await calculateResultsInternal(ctx, args.seasonId, args.weekNumber);
 
     return session._id;
   },
@@ -814,5 +816,298 @@ export const getCategoryVotesForCommissioner = query({
     const votes = allVotes.filter((v) => v.categoryId === currentCategory.id);
 
     return votes;
+  },
+});
+
+// Helper: Get victory points for a placement
+function getVictoryPoints(placement: number): number {
+  switch (placement) {
+    case 1:
+      return 5;
+    case 2:
+      return 3;
+    case 3:
+      return 2;
+    case 4:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+// Internal helper: Calculate results (called from mutations)
+export async function calculateResultsInternal(
+  ctx: any,
+  seasonId: Id<'seasons'>,
+  weekNumber: number
+) {
+  // Check if results already exist for this week
+  const existingResults = await ctx.db
+    .query('weekly_results')
+    .withIndex('by_seasonId_weekNumber', (q: any) =>
+      q.eq('seasonId', seasonId).eq('weekNumber', weekNumber)
+    )
+    .first();
+
+  if (existingResults) {
+    return { alreadyCalculated: true };
+  }
+
+  // Get voting session
+  const session = await ctx.db
+    .query('voting_sessions')
+    .withIndex('by_seasonId_weekNumber', (q: any) =>
+      q.eq('seasonId', seasonId).eq('weekNumber', weekNumber)
+    )
+    .first();
+
+  if (!session) {
+    throw new Error('Voting session not found');
+  }
+
+  if (session.status !== 'CLOSED') {
+    throw new Error('Voting session must be closed to calculate results');
+  }
+
+  // Get all season players
+  const seasonPlayers = await ctx.db
+    .query('season_players')
+    .withIndex('by_seasonId', (q: any) => q.eq('seasonId', seasonId))
+    .collect();
+
+  // Get all votes for this session
+  const allVotes = await ctx.db
+    .query('votes')
+    .withIndex('by_sessionId', (q: any) => q.eq('sessionId', session._id))
+    .collect();
+
+  // Build category point value map
+  const categoryPointMap = new Map<string, { pointValue: 1 | 2 | 3; title: string }>();
+  for (const cat of session.categories) {
+    categoryPointMap.set(cat.id, { pointValue: cat.pointValue, title: cat.title });
+  }
+
+  // Calculate voting points per player
+  const playerResults: {
+    seasonPlayerId: Id<'season_players'>;
+    votingPoints: number;
+    breakdown: {
+      categoryId: string;
+      categoryTitle: string;
+      votes: number;
+      pointValue: 1 | 2 | 3;
+      pointsEarned: number;
+    }[];
+  }[] = [];
+
+  for (const player of seasonPlayers) {
+    const breakdown: {
+      categoryId: string;
+      categoryTitle: string;
+      votes: number;
+      pointValue: 1 | 2 | 3;
+      pointsEarned: number;
+    }[] = [];
+
+    let totalVotingPoints = 0;
+
+    for (const category of session.categories) {
+      // Count votes for this player in this category
+      const votesForPlayerInCategory = allVotes.filter(
+        (v: any) =>
+          v.categoryId === category.id &&
+          v.nominatedPlayerId.toString() === player._id.toString()
+      ).length;
+
+      const pointsEarned = votesForPlayerInCategory * category.pointValue;
+      totalVotingPoints += pointsEarned;
+
+      breakdown.push({
+        categoryId: category.id,
+        categoryTitle: category.title,
+        votes: votesForPlayerInCategory,
+        pointValue: category.pointValue,
+        pointsEarned,
+      });
+    }
+
+    playerResults.push({
+      seasonPlayerId: player._id,
+      votingPoints: totalVotingPoints,
+      breakdown,
+    });
+  }
+
+  // Sort by voting points (descending) to determine rankings
+  playerResults.sort((a, b) => b.votingPoints - a.votingPoints);
+
+  // Assign placements with tie handling (sports model)
+  // If two players tie for 1st, both get placement 1, next player is 3
+  const placements: Map<string, number> = new Map();
+  let currentPlacement = 1;
+  let playersAtCurrentPlacement = 0;
+
+  for (let i = 0; i < playerResults.length; i++) {
+    const player = playerResults[i];
+    const prevPlayer = i > 0 ? playerResults[i - 1] : null;
+
+    if (prevPlayer && player.votingPoints === prevPlayer.votingPoints) {
+      // Tie with previous player - same placement
+      placements.set(player.seasonPlayerId.toString(), currentPlacement);
+      playersAtCurrentPlacement++;
+    } else {
+      // New placement (skip places for ties)
+      currentPlacement = i + 1;
+      placements.set(player.seasonPlayerId.toString(), currentPlacement);
+      playersAtCurrentPlacement = 1;
+    }
+  }
+
+  // Create weekly_results records and update season_players
+  const resultsData: {
+    player: string;
+    placement: number;
+    votingPoints: number;
+    victoryPoints: number;
+  }[] = [];
+
+  for (const player of playerResults) {
+    const placement = placements.get(player.seasonPlayerId.toString()) || 4;
+    const victoryPoints = getVictoryPoints(placement);
+
+    // Insert weekly_results record
+    await ctx.db.insert('weekly_results', {
+      seasonId,
+      weekNumber,
+      seasonPlayerId: player.seasonPlayerId,
+      votingPoints: player.votingPoints,
+      placement,
+      victoryPoints,
+      breakdown: player.breakdown,
+      createdAt: Date.now(),
+    });
+
+    // Update season_players totalPoints
+    const seasonPlayer = await ctx.db.get(player.seasonPlayerId);
+    if (seasonPlayer) {
+      await ctx.db.patch(player.seasonPlayerId, {
+        totalPoints: seasonPlayer.totalPoints + victoryPoints,
+      });
+    }
+
+    // Get player name for event logging
+    const playerDoc = seasonPlayers.find(
+      (p: any) => p._id.toString() === player.seasonPlayerId.toString()
+    );
+
+    resultsData.push({
+      player: playerDoc?.labelName || 'Unknown',
+      placement,
+      votingPoints: player.votingPoints,
+      victoryPoints,
+    });
+  }
+
+  // Log RESULTS_CALCULATED event
+  await logEvent(ctx, seasonId, 'RESULTS_CALCULATED', {
+    week: weekNumber,
+    results: resultsData,
+  });
+
+  // Award advantages based on results
+  // Import and call awardAdvantagesInternal inline to avoid circular deps
+  const { awardAdvantagesInternal } = await import('./advantages');
+  await awardAdvantagesInternal(ctx, seasonId, weekNumber);
+
+  return { success: true, results: resultsData };
+}
+
+// Mutation: Calculate results (can be called manually if needed)
+export const calculateResults = mutation({
+  args: {
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+    requestingUserId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) {
+      throw new Error('Season not found');
+    }
+
+    // Check if requester is commissioner
+    const league = await ctx.db.get(season.leagueId);
+    if (!league) {
+      throw new Error('League not found');
+    }
+    if (league.commissionerId.toString() !== args.requestingUserId.toString()) {
+      throw new Error('Only commissioners can calculate results');
+    }
+
+    return await calculateResultsInternal(ctx, args.seasonId, args.weekNumber);
+  },
+});
+
+// Query: Get weekly results
+export const getWeeklyResults = query({
+  args: {
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Get all results for this week
+    const results = await ctx.db
+      .query('weekly_results')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', args.weekNumber)
+      )
+      .collect();
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    // Enrich with player names
+    const enrichedResults = await Promise.all(
+      results.map(async (result) => {
+        const seasonPlayer = await ctx.db.get(result.seasonPlayerId);
+        const user = seasonPlayer
+          ? await ctx.db.get(seasonPlayer.userId)
+          : null;
+
+        return {
+          ...result,
+          playerName: seasonPlayer?.labelName || 'Unknown',
+          displayName: user?.displayName || 'Unknown',
+        };
+      })
+    );
+
+    // Sort by placement
+    return enrichedResults.sort((a, b) => a.placement - b.placement);
+  },
+});
+
+// Query: Get latest week with results
+export const getLatestWeekWithResults = query({
+  args: {
+    seasonId: v.id('seasons'),
+  },
+  handler: async (ctx, args) => {
+    // Get all results for this season
+    const results = await ctx.db
+      .query('weekly_results')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId)
+      )
+      .collect();
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    // Find the highest week number
+    const maxWeek = Math.max(...results.map((r) => r.weekNumber));
+    return maxWeek;
   },
 });
