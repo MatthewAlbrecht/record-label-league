@@ -7,7 +7,7 @@ import type { Id } from 'convex/_generated/dataModel';
 import { useAuth } from '~/lib/auth-context';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -165,6 +165,15 @@ export default function PresentationPage() {
 
     return (
       <div className="container mx-auto py-4 px-4 max-w-6xl">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}`)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
         {/* Header */}
         <div className="mb-4">
           <h1 className="text-2xl font-bold mb-1">Week {season.currentWeek} Presentation</h1>
@@ -251,6 +260,15 @@ export default function PresentationPage() {
 
     return (
       <div className="container mx-auto py-4 px-4 max-w-4xl">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}`)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-start justify-between gap-4">

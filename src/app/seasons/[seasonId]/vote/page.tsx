@@ -9,7 +9,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Alert, AlertDescription } from '~/components/ui/alert';
-import { Loader2, CheckCircle2, ArrowRight, Circle, Check } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowRight, Circle, Check, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
@@ -259,6 +259,15 @@ export default function VotingPage() {
   if (votingSession.currentCategoryIndex < 0) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-4xl">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}`)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Week {season.currentWeek} of 8 — Award Show Voting</h1>
           <p className="text-gray-600">Ready to begin voting</p>
@@ -288,6 +297,15 @@ export default function VotingPage() {
   if (votingSession.status === 'CLOSED') {
     return (
       <div className="container mx-auto py-8 px-4 max-w-4xl">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}`)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Week {season.currentWeek} of 8 — Voting Complete</h1>
           <p className="text-gray-600">All awards have been voted on</p>
@@ -416,6 +434,15 @@ export default function VotingPage() {
         />
       )}
       <div className="container mx-auto py-8 px-4 max-w-4xl">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}`)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Week {season.currentWeek} of 8 — Award Show Voting</h1>

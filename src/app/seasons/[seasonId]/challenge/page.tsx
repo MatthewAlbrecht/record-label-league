@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '~/components/ui/dialog';
-import { Loader2, AlertCircle, CheckCircle, CheckCircle2, Music, Trash2, Trophy } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, CheckCircle2, Music, Trash2, Trophy, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -710,6 +710,20 @@ export default function PlaylistSubmissionPage() {
       : 'skip'
   );
 
+  // Get all playlists for linking (available from presentation phase onward)
+  const showPlaylistLinks = seasonData?.currentPhase && 
+    ['PLAYLIST_PRESENTATION', 'VOTING', 'IN_SEASON_WEEK_END'].includes(seasonData.currentPhase);
+  
+  const weekPlaylists = useQuery(
+    api.playlists.getWeekPlaylists,
+    showPlaylistLinks && seasonData
+      ? {
+          seasonId: seasonId as Id<'seasons'>,
+          weekNumber: seasonData.currentWeek,
+        }
+      : 'skip'
+  );
+
   if (!user || !seasonData) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -809,6 +823,15 @@ export default function PlaylistSubmissionPage() {
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-4xl">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push(`/seasons/${seasonId}`)}
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Dashboard
+      </button>
+
       {/* Challenge Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -925,6 +948,31 @@ export default function PlaylistSubmissionPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* All Playlists - shown from presentation phase onward */}
+        {showPlaylistLinks && weekPlaylists && weekPlaylists.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-sm font-semibold text-gray-900 mb-3">All Playlists:</p>
+            <div className="grid gap-2">
+              {weekPlaylists.map((playlist) => (
+                <a
+                  key={playlist._id}
+                  href={playlist.spotifyPlaylistUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors"
+                >
+                  <Music className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-green-900">{playlist.player.labelName}</p>
+                    <p className="text-sm text-green-700 truncate">{playlist.tracks.length} tracks</p>
+                  </div>
+                  <span className="text-xs text-green-600 font-medium">Open in Spotify →</span>
+                </a>
+              ))}
             </div>
           </div>
         )}
