@@ -414,10 +414,8 @@ export const completePresentation = mutation({
 
     // Check if all players have presented
     if (presentedPlayerIds.length >= allPlayers.length) {
-      // All done - advance phase
-      await ctx.db.patch(args.seasonId, {
-        currentPhase: 'IN_SEASON_WEEK_END',
-      });
+      // All done - stay in PLAYLIST_PRESENTATION, commissioner will advance to VOTING manually
+      // (Phase transition handled by advanceToVoting mutation)
 
       // Update presentation state
       await ctx.db.patch(presentationState._id, {
