@@ -49,8 +49,12 @@ Challenge Board: ${debugData.challengeBoard}
 Board Challenges: ${debugData.boardChallenges}
 Challenge Selections: ${debugData.challengeSelections}
 Challenge Reveals: ${debugData.challengeReveals}
+Challenge Option Selections: ${debugData.challengeOptionSelections}
 Advantage Board: ${debugData.advantageBoard}
-Board Advantages: ${debugData.boardAdvantages}`;
+Board Advantages: ${debugData.boardAdvantages}
+Presentation State: ${debugData.presentationState}
+Presented Players: ${debugData.presentationStateData?.presentedPlayerIds?.length ?? 0}/${debugData.seasonPlayers}
+Voting Session: ${debugData.votingSession}`;
             copyToClipboard(summary, setCopiedSummary);
           }}
           className="absolute top-2 right-2 px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded"
@@ -101,10 +105,25 @@ Board Advantages: ${debugData.boardAdvantages}`;
             <strong>Challenge Reveals:</strong> {debugData.challengeReveals}
           </div>
           <div>
+            <strong>Challenge Option Selections:</strong>{" "}
+            {debugData.challengeOptionSelections}
+          </div>
+          <div>
             <strong>Advantage Board:</strong> {debugData.advantageBoard}
           </div>
           <div>
             <strong>Board Advantages:</strong> {debugData.boardAdvantages}
+          </div>
+          <hr className="my-2" />
+          <div>
+            <strong>Presentation State:</strong> {debugData.presentationState}
+          </div>
+          <div>
+            <strong>Presented Players:</strong>{" "}
+            {debugData.presentationStateData?.presentedPlayerIds?.length ?? 0}/{debugData.seasonPlayers}
+          </div>
+          <div>
+            <strong>Voting Session:</strong> {debugData.votingSession}
           </div>
         </div>
       </div>

@@ -700,6 +700,30 @@ export const getSeasonDebugData = query({
       .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
       .collect();
 
+    // Presentation state for current week
+    const presentationStates = await ctx.db
+      .query('presentation_state')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', season.currentWeek)
+      )
+      .collect();
+
+    // Voting sessions
+    const votingSessions = await ctx.db
+      .query('voting_sessions')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', season.currentWeek)
+      )
+      .collect();
+
+    // Challenge option selections
+    const challengeOptionSelections = await ctx.db
+      .query('challenge_option_selections')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', season.currentWeek)
+      )
+      .collect();
+
     return {
       season,
       seasonPlayers: seasonPlayers.length,
@@ -728,6 +752,12 @@ export const getSeasonDebugData = query({
       challengeSelectionsData: challengeSelections,
       challengeReveals: challengeReveals.length,
       challengeRevealsData: challengeReveals,
+      presentationState: presentationStates.length > 0 ? 'exists' : 'null',
+      presentationStateData: presentationStates[0] || null,
+      votingSession: votingSessions.length > 0 ? 'exists' : 'null',
+      votingSessionData: votingSessions[0] || null,
+      challengeOptionSelections: challengeOptionSelections.length,
+      challengeOptionSelectionsData: challengeOptionSelections,
     };
   },
 });
