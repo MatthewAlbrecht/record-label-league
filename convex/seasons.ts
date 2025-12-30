@@ -869,16 +869,35 @@ export const rollbackToCheckpoint = mutation({
         throw new Error(`Invalid checkpoint format: ${args.checkpoint}`);
       }
 
-      // Delete presentation_state for this week
-      const presentationStates = await ctx.db
+      // Reset presentation_state for this week (or create if doesn't exist)
+      const presentationState = await ctx.db
         .query('presentation_state')
         .withIndex('by_seasonId_weekNumber', (q) =>
           q.eq('seasonId', args.seasonId).eq('weekNumber', weekNum)
         )
-        .collect();
+        .first();
 
-      for (const state of presentationStates) {
-        await ctx.db.delete(state._id);
+      if (presentationState) {
+        // Reset to defaults
+        await ctx.db.patch(presentationState._id, {
+          currentPresenterId: undefined,
+          currentTrackIndex: -1,
+          presentedPlayerIds: [],
+          status: 'NOT_STARTED',
+          startedAt: Date.now(),
+          completedAt: undefined,
+        });
+      } else {
+        // Create new one
+        await ctx.db.insert('presentation_state', {
+          seasonId: args.seasonId,
+          weekNumber: weekNum,
+          currentPresenterId: undefined,
+          currentTrackIndex: -1,
+          presentedPlayerIds: [],
+          status: 'NOT_STARTED',
+          startedAt: Date.now(),
+        });
       }
 
       // Delete voting_sessions for this week
@@ -905,7 +924,7 @@ export const rollbackToCheckpoint = mutation({
       }
 
       console.log(
-        `[ROLLBACK WEEK_${weekNum}_PRESENTATION] Deleted presentation_state and voting data for week ${weekNum}`
+        `[ROLLBACK WEEK_${weekNum}_PRESENTATION] Reset presentation_state and deleted voting data for week ${weekNum}`
       );
     }
 

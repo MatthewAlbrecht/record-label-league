@@ -38,10 +38,31 @@ export default function PresentationPage() {
   // Check if user is commissioner
   const isCommissioner = seasonData && user && seasonData.league.commissioner.id === user.id;
 
-  if (!pageData || !user || !seasonData) {
+  // Still loading
+  if (pageData === undefined || seasonData === undefined || !user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // pageData is null - presentation not initialized
+  if (pageData === null) {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
+        <Card className="p-6 border-yellow-200 bg-yellow-50">
+          <h2 className="text-lg font-bold text-yellow-900 mb-2">Presentation Not Started</h2>
+          <p className="text-yellow-800 mb-4">
+            The presentation phase hasn&apos;t been initialized yet. 
+            {seasonData?.currentPhase !== 'PLAYLIST_PRESENTATION' && (
+              <span> Current phase: <strong>{seasonData?.currentPhase}</strong></span>
+            )}
+          </p>
+          <p className="text-sm text-yellow-700">
+            Commissioner: Go to Admin → click &quot;Start Presentation Phase&quot; to begin.
+          </p>
+        </Card>
       </div>
     );
   }
