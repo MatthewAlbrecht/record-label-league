@@ -1376,3 +1376,91 @@ export const advanceToSubmissionPhase = mutation({
     return { success: true };
   },
 });
+
+// Admin mutation: Recreate a challenge selection (for recovery purposes)
+export const adminRecreateChallengeSelection = mutation({
+  args: {
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+    challengeTitle: v.string(),
+    requestingUserId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) {
+      throw new Error('Season not found');
+    }
+
+    // Check if requester is commissioner
+    const league = await ctx.db.get(season.leagueId);
+    if (!league || league.commissionerId.toString() !== args.requestingUserId.toString()) {
+      throw new Error('Only commissioners can recreate challenge selections');
+    }
+
+    // Find the board challenge by title
+    const board = await ctx.db
+      .query('challenge_boards')
+      .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
+      .first();
+
+    if (!board) {
+      throw new Error('Challenge board not found');
+    }
+
+    const boardChallenges = await ctx.db
+      .query('board_challenges')
+      .withIndex('by_boardId', (q) => q.eq('boardId', board._id))
+      .collect();
+
+    let foundBoardChallenge = null;
+    for (const bc of boardChallenges) {
+      const canonical = await ctx.db.get(bc.canonicalChallengeId);
+      if (canonical && canonical.title.toLowerCase().includes(args.challengeTitle.toLowerCase())) {
+        foundBoardChallenge = bc;
+        break;
+      }
+    }
+
+    if (!foundBoardChallenge) {
+      throw new Error(`Challenge with title containing "${args.challengeTitle}" not found`);
+    }
+
+    // Check if selection already exists
+    const existingSelection = await ctx.db
+      .query('challenge_selections')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId).eq('weekNumber', args.weekNumber)
+      )
+      .first();
+
+    if (existingSelection) {
+      throw new Error('Challenge selection already exists for this week');
+    }
+
+    // Get first player as the "selector" (for the record)
+    const players = await ctx.db
+      .query('season_players')
+      .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
+      .collect();
+
+    const firstPlayer = players[0];
+    if (!firstPlayer) {
+      throw new Error('No players found');
+    }
+
+    // Create the selection
+    const selectionId = await ctx.db.insert('challenge_selections', {
+      seasonId: args.seasonId,
+      weekNumber: args.weekNumber,
+      boardChallengeId: foundBoardChallenge._id,
+      selectedByPlayerId: firstPlayer._id,
+      createdAt: Date.now(),
+    });
+
+    return { 
+      success: true, 
+      selectionId,
+      challengeTitle: args.challengeTitle,
+    };
+  },
+});
