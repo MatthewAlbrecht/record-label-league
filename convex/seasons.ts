@@ -774,10 +774,11 @@ export const rollbackToCheckpoint = mutation({
       );
     }
     // In-season rollback: Keep pre-season data, clear specified week+
+    // Note: Exclude _PRESENTATION checkpoints - they have separate handling below
     else if (
       args.checkpoint === 'START_OF_SEASON' ||
       args.checkpoint === 'WEEK_5' ||
-      args.checkpoint.startsWith('WEEK_')
+      (args.checkpoint.startsWith('WEEK_') && !args.checkpoint.endsWith('_PRESENTATION'))
     ) {
       // Delete challenge_selections where weekNumber >= toWeek
       const challengeSelections = await ctx.db
