@@ -13,6 +13,8 @@ const PHASE_ORDER: Record<string, number> = {
   PLAYLIST_PRESENTATION: 6,
   VOTING: 7,
   IN_SEASON_WEEK_END: 8,
+  ROSTER_EVOLUTION: 9, // Umbrella phase (sub-phases tracked in roster_evolution_state)
+  WEEK_TRANSITION: 10,
 };
 
 export const createSeason = mutation({
@@ -429,6 +431,35 @@ export const rollbackToCheckpoint = mutation({
 
     // Handle dynamic WEEK_N checkpoints
     if (args.checkpoint.startsWith('WEEK_')) {
+      // Check if it's a roster evolution checkpoint
+      if (args.checkpoint.endsWith('_ROSTER_EVOLUTION')) {
+        // Extract week number: "WEEK_1_ROSTER_EVOLUTION" -> "1"
+        const weekStr = args.checkpoint
+          .replace('WEEK_', '')
+          .replace('_ROSTER_EVOLUTION', '');
+        const weekNum = parseInt(weekStr, 10);
+        if (isNaN(weekNum)) {
+          throw new Error(`Invalid checkpoint format: ${args.checkpoint}`);
+        }
+        // Call the dedicated roster evolution rollback
+        await ctx.runMutation(api.rosterEvolution.rollbackRosterEvolution, {
+          seasonId: args.seasonId,
+          weekNumber: weekNum,
+          requesterId: args.requesterId,
+        });
+        // Log the rollback event
+        await logEvent(
+          ctx,
+          args.seasonId,
+          'SEASON_ROLLED_BACK',
+          {
+            from: { phase: fromPhase, week: fromWeek },
+            to: { checkpoint: args.checkpoint },
+          },
+          args.requesterId
+        );
+        return await ctx.db.get(args.seasonId);
+      }
       // Check if it's a presentation phase checkpoint
       if (args.checkpoint.endsWith('_PRESENTATION')) {
         // Extract week number: "WEEK_1_PRESENTATION" -> "1"
@@ -1217,6 +1248,56 @@ export const updateAdvantageSelectionConfig = mutation({
     await ctx.db.patch(args.seasonId, {
       advantageSelectionConfig: args.config,
     });
+
+    return await ctx.db.get(args.seasonId);
+  },
+});
+
+// Mutation: Advance to Roster Evolution phase
+export const advanceToRosterEvolution = mutation({
+  args: {
+    seasonId: v.id('seasons'),
+    requesterId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) {
+      throw new Error('Season not found');
+    }
+
+    // Verify requester is commissioner
+    const league = await ctx.db.get(season.leagueId);
+    if (!league) {
+      throw new Error('League not found');
+    }
+    if (league.commissionerId.toString() !== args.requesterId.toString()) {
+      throw new Error('Only commissioners can advance to roster evolution');
+    }
+
+    // Validate current phase is VOTING
+    if (season.currentPhase !== 'VOTING') {
+      throw new Error(
+        'Can only advance to roster evolution from VOTING phase'
+      );
+    }
+
+    // Update season phase to ROSTER_EVOLUTION
+    await ctx.db.patch(args.seasonId, {
+      currentPhase: 'ROSTER_EVOLUTION',
+    });
+
+    // Log event
+    await logEvent(
+      ctx,
+      args.seasonId,
+      'PHASE_ADVANCED',
+      {
+        from: 'IN_SEASON_WEEK_END',
+        to: 'ROSTER_EVOLUTION',
+        weekNumber: season.currentWeek,
+      },
+      args.requesterId
+    );
 
     return await ctx.db.get(args.seasonId);
   },

@@ -95,6 +95,7 @@ export default defineSchema({
     ),
     acquiredAtWeek: v.number(),
     acquiredAtRound: v.number(), // 1-8 for draft picks
+    cutAtWeek: v.optional(v.number()), // Week when cut (if status is CUT)
     createdAt: v.number(),
   })
     .index('by_seasonPlayerId', ['seasonPlayerId'])
@@ -259,6 +260,125 @@ export default defineSchema({
     canUseAfterWeek: v.optional(v.number()), // Cooldown: 0 = usable immediately, optional for backwards compat
     createdAt: v.number(),
   }).index('by_seasonPlayerId', ['seasonPlayerId']),
+
+  // Roster evolution state machine per week
+  roster_evolution_state: defineTable({
+    seasonId: v.id('seasons'),
+    weekNumber: v.number(),
+    weekType: v.union(v.literal('GROWTH'), v.literal('CHAOS')),
+    currentPhase: v.union(
+      v.literal('PROTECTION'),
+      v.literal('SELF_CUT'),
+      v.literal('OPPONENT_CUT'),
+      v.literal('PROMPT_SELECTION'), // Last place picks the redraft prompt
+      v.literal('REDRAFT'),
+      v.literal('POOL_DRAFT'),
+      v.literal('BANISHMENT'),
+      v.literal('CHAOS_ADVANTAGE_DRAFT'),
+      v.literal('COMPLETE')
+    ),
+    // Prompt selection tracking
+    promptPickerId: v.optional(v.id('season_players')), // Last place player
+    selectedPromptId: v.optional(v.id('draft_prompts')), // Selected redraft prompt
+    // Cuts tracking
+    cutsRequired: v.array(
+      v.object({
+        seasonPlayerId: v.id('season_players'),
+        selfCutCount: v.number(),
+        selfCutsCompleted: v.number(),
+        opponentCutsRemaining: v.array(v.id('season_players')), // Chaos only
+        completed: v.boolean(),
+      })
+    ),
+    // Redraft tracking
+    redraftOrder: v.array(v.id('season_players')), // Reverse standings
+    currentRedraftIndex: v.number(),
+    redraftsPerPlayer: v.number(),
+    redraftRound: v.number(), // 1-4 for Chaos snake draft
+    redraftPicksCompleted: v.array(
+      v.object({
+        seasonPlayerId: v.id('season_players'),
+        picksCompleted: v.number(),
+      })
+    ),
+    // Pool draft tracking
+    poolDraftOrder: v.array(v.id('season_players')),
+    currentPoolDraftIndex: v.number(),
+    includesPoolDraft: v.boolean(),
+    poolDraftPicksCompleted: v.array(
+      v.object({
+        seasonPlayerId: v.id('season_players'),
+        picksCompleted: v.number(),
+      })
+    ),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index('by_seasonId_weekNumber', ['seasonId', 'weekNumber']),
+
+  // Pool entries (artists cut from rosters, available for drafting)
+  pool_entries: defineTable({
+    seasonId: v.id('seasons'),
+    artistId: v.id('artists'),
+    status: v.union(
+      v.literal('AVAILABLE'),
+      v.literal('DRAFTED'),
+      v.literal('BANISHED')
+    ),
+    enteredPoolAt: v.number(),
+    enteredPoolWeek: v.number(),
+    enteredVia: v.union(
+      v.literal('SELF_CUT'),
+      v.literal('CHAOS_CUT'),
+      v.literal('OPPONENT_CUT')
+    ),
+    cutByPlayerId: v.optional(v.id('season_players')), // Who cut this artist
+    cutFromPlayerId: v.optional(v.id('season_players')), // Whose roster they were on
+    draftedByPlayerId: v.optional(v.id('season_players')), // If drafted from pool
+    draftedAtWeek: v.optional(v.number()),
+    banishedAtWeek: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_seasonId', ['seasonId'])
+    .index('by_seasonId_status', ['seasonId', 'status'])
+    .index('by_artistId', ['artistId']),
+
+  // Roster evolution settings per season
+  roster_evolution_settings: defineTable({
+    seasonId: v.id('seasons'),
+    // Week type mapping: which weeks are Growth vs Chaos
+    weekTypes: v.array(
+      v.object({
+        weekNumber: v.number(),
+        type: v.union(v.literal('GROWTH'), v.literal('CHAOS'), v.literal('SKIP')),
+      })
+    ),
+    // Growth Week settings
+    growthWeek: v.object({
+      selfCutCount: v.number(),
+      redraftCount: v.number(),
+    }),
+    // Pool Draft settings
+    poolDraftWeeks: v.array(v.number()), // Which weeks include Pool Draft
+    poolDraftCount: v.number(), // Picks per player during Pool Draft
+    // Chaos Week settings
+    chaosWeek: v.object({
+      baseProtectionCount: v.number(),
+      firstPlaceProtectionReduction: v.number(),
+      opponentCutsPerPlayer: v.number(),
+      redraftTargetRosterSize: v.number(),
+      includesPoolDraft: v.boolean(),
+      poolDraftCount: v.number(),
+      banishOldPool: v.boolean(),
+    }),
+    // Chaos Advantage Draft settings
+    chaosAdvantageDraft: v.object({
+      enabled: v.boolean(),
+      advantageCount: v.number(),
+      tier: v.union(v.literal(1), v.literal(2), v.literal(3)),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_seasonId', ['seasonId']),
 
   // Advantage distribution settings per season
   advantage_distribution_settings: defineTable({

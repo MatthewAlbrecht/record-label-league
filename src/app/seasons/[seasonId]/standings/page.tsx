@@ -4,7 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Zap, ExternalLink } from 'lucide-react';
 import { Card } from '~/components/ui/card';
 
 export default function StandingsPage() {
@@ -15,6 +15,10 @@ export default function StandingsPage() {
   console.log('seasonId', seasonId);
 
   const standingsData = useQuery(api.dashboard.getStandingsPageData, {
+    seasonId: seasonId as any,
+  });
+
+  const weeklyHistory = useQuery(api.dashboard.getWeeklyHistory, {
     seasonId: seasonId as any,
   });
 
@@ -141,7 +145,7 @@ export default function StandingsPage() {
         )}
 
         {/* Standings Table */}
-        <div className="inline-block border rounded">
+        <div className="inline-block border rounded mb-8">
           <table className="min-w-[500px]">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-200">
@@ -198,6 +202,94 @@ export default function StandingsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Weekly History Table */}
+        {weeklyHistory && weeklyHistory.length > 0 && (
+          <div>
+            <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+              <span className="text-2xl">📅</span>
+              Weekly History
+            </h2>
+            <div className="overflow-x-auto border rounded">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-200">
+                    <th className="w-16 px-3 py-2 text-center text-xs font-bold text-gray-900">Week</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-900">Challenge</th>
+                    <th className="px-3 py-2 text-left text-xs font-bold text-gray-900">Picked By</th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-900">🥇 1st</th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-900">🥈 2nd</th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-900">🥉 3rd</th>
+                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-900">4th</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklyHistory.map((week) => {
+                    // Use filter to get all players at each placement (handles ties)
+                    const firsts = week.placements.filter((p) => p.placement === 1);
+                    const seconds = week.placements.filter((p) => p.placement === 2);
+                    const thirds = week.placements.filter((p) => p.placement === 3);
+                    const fourths = week.placements.filter((p) => p.placement === 4);
+
+                    const renderPlacements = (placements: typeof firsts) => {
+                      if (placements.length === 0) return <span className="text-gray-400">-</span>;
+                      return (
+                        <div className="flex flex-col items-center gap-0.5">
+                          {placements.map((placement) => (
+                            <div key={placement.playerId} className="flex items-center justify-center gap-1">
+                              <span className="text-sm font-medium">{placement.labelName}</span>
+                              {placement.playlistUrl && (
+                                <a
+                                  href={placement.playlistUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:text-green-800"
+                                  title="Open playlist"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <tr key={week.weekNumber} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td className="px-3 py-2 text-center">
+                          <span className="text-sm font-bold text-gray-900">{week.weekNumber}</span>
+                        </td>
+                        <td className="px-4 py-2">
+                          {week.challenge ? (
+                            <div>
+                              <p className="text-sm font-semibold">
+                                <span className="mr-1">{week.challenge.emoji}</span>
+                                {week.challenge.title}
+                              </p>
+                              {week.challenge.generalVibe && (
+                                <p className="text-xs text-gray-500 italic">{week.challenge.generalVibe}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="text-sm text-gray-700">{week.pickedBy.labelName}</span>
+                        </td>
+                        <td className="px-3 py-2 text-center">{renderPlacements(firsts)}</td>
+                        <td className="px-3 py-2 text-center">{renderPlacements(seconds)}</td>
+                        <td className="px-3 py-2 text-center">{renderPlacements(thirds)}</td>
+                        <td className="px-3 py-2 text-center">{renderPlacements(fourths)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

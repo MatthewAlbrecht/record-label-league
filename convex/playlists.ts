@@ -412,15 +412,6 @@ export const submitPlaylist = mutation({
       selectedOption = optionSelection.selectedOption;
     }
 
-    const { minTracks, maxTracks } = canonical.constraints;
-
-    // Validate track count
-    if (tracks.length < minTracks || tracks.length > maxTracks) {
-      throw new Error(
-        `Playlist must have between ${minTracks} and ${maxTracks} tracks`
-      );
-    }
-
     // Validate tracks against roster
     const trackArtistNames = new Set<string>();
 

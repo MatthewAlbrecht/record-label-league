@@ -97,11 +97,12 @@ export function getCheckpointImplications(
       isAvailable: true,
     });
 
-    // Add "Start of this week's presentation phase" if in presentation, voting, or week end phase
+    // Add "Start of this week's presentation phase" if in presentation, voting, week end, or roster evolution phase
     if (
       currentPhase === 'PLAYLIST_PRESENTATION' ||
       currentPhase === 'VOTING' ||
-      currentPhase === 'IN_SEASON_WEEK_END'
+      currentPhase === 'IN_SEASON_WEEK_END' ||
+      currentPhase === 'ROSTER_EVOLUTION'
     ) {
       checkpoints.push({
         id: `WEEK_${currentWeek}_PRESENTATION`,
@@ -115,6 +116,26 @@ export function getCheckpointImplications(
           `Presentation state will be cleared`,
           `Voting session and votes will be deleted`,
           `Players can restart presentations from the beginning`,
+        ],
+        isAvailable: true,
+      });
+    }
+
+    // Add "Start of Roster Evolution" if currently in ROSTER_EVOLUTION phase
+    if (currentPhase === 'ROSTER_EVOLUTION') {
+      checkpoints.push({
+        id: `WEEK_${currentWeek}_ROSTER_EVOLUTION`,
+        title: `Start of Week ${currentWeek} Roster Evolution`,
+        phase: 'ROSTER_EVOLUTION',
+        week: currentWeek,
+        description: `Reset roster evolution to the beginning (cuts phase)`,
+        implications: [
+          `All cut artists will be restored to their original rosters`,
+          `All redrafted artists will be removed`,
+          `Artists drafted from the pool will return to available status`,
+          `Prompt selection will be cleared`,
+          `Roster evolution will restart from the cuts phase`,
+          `Related game events will be deleted`,
         ],
         isAvailable: true,
       });

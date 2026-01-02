@@ -47,6 +47,8 @@ const SEASON_PHASES = [
 	"PLAYLIST_PRESENTATION",
 	"VOTING",
 	"IN_SEASON_WEEK_END",
+	"ROSTER_EVOLUTION",
+	"WEEK_TRANSITION",
 ];
 
 const PHASE_ORDER: Record<string, number> = {
@@ -59,6 +61,8 @@ const PHASE_ORDER: Record<string, number> = {
 	PLAYLIST_PRESENTATION: 6,
 	VOTING: 7,
 	IN_SEASON_WEEK_END: 8,
+	ROSTER_EVOLUTION: 9,
+	WEEK_TRANSITION: 10,
 };
 
 export default function SeasonAdminPage() {
@@ -93,6 +97,8 @@ export default function SeasonAdminPage() {
 	const [isAdvancingToVoting, setIsAdvancingToVoting] = useState(false);
 	const [showVotingConfirm, setShowVotingConfirm] = useState(false);
 	const [voteRevealMode, setVoteRevealMode] = useState<'IMMEDIATE' | 'ON_REVEAL'>('ON_REVEAL');
+	const [isAdvancingToRosterEvolution, setIsAdvancingToRosterEvolution] = useState(false);
+	const [showRosterEvolutionConfirm, setShowRosterEvolutionConfirm] = useState(false);
 	const [showDeleteSeasonConfirm, setShowDeleteSeasonConfirm] = useState(false);
 	const [isDeletingSeason, setIsDeletingSeason] = useState(false);
 	const [draftDuplicateSourceSeasonId, setDraftDuplicateSourceSeasonId] = useState<string>("");
@@ -126,6 +132,10 @@ export default function SeasonAdminPage() {
 		seasonId: seasonId as Id<"seasons">,
 	});
 
+	const pendingAdvantageSelections = useQuery(api.inventory.getPendingAdvantageSelections, {
+		seasonId: seasonId as Id<"seasons">,
+	});
+
 	const weekPlaylists = useQuery(
 		api.playlists.getWeekPlaylists,
 		season && season.currentPhase === "PLAYLIST_SUBMISSION"
@@ -147,6 +157,7 @@ export default function SeasonAdminPage() {
 	const rollbackToCheckpointMutation = useMutation(api.seasons.rollbackToCheckpoint);
 	const startPresentationPhaseAction = useAction(api.actions.presentation.startPresentationPhase);
 	const advanceToVotingMutation = useMutation(api.seasons.advanceToVoting);
+	const advanceToRosterEvolutionMutation = useMutation(api.seasons.advanceToRosterEvolution);
 	const deleteSeasonMutation = useMutation(api.seasons.deleteSeason);
 	const duplicateDraftBoardMutation = useMutation(api.drafts.duplicateBoardFromSeason);
 	const duplicateChallengeBoardMutation = useMutation(api.challenges.duplicateBoardFromSeason);
@@ -534,6 +545,29 @@ export default function SeasonAdminPage() {
 		}
 	};
 
+	const handleAdvanceToRosterEvolution = async () => {
+		if (!season || !user) return;
+
+		try {
+			setIsAdvancingToRosterEvolution(true);
+			await advanceToRosterEvolutionMutation({
+				seasonId: seasonId as Id<"seasons">,
+				requesterId: user.id,
+			});
+			setShowRosterEvolutionConfirm(false);
+			toast.success('Advanced to Roster Evolution!');
+			// Navigate to roster evolution page
+			setTimeout(() => {
+				router.push(`/seasons/${seasonId}/roster-evolution`);
+			}, 500);
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Failed to advance to roster evolution';
+			toast.error(errorMessage);
+		} finally {
+			setIsAdvancingToRosterEvolution(false);
+		}
+	};
+
 	const handleDeleteSeason = async () => {
 		if (!season || !user) return;
 
@@ -700,6 +734,26 @@ export default function SeasonAdminPage() {
 									</p>
 								</div>
 								<div className="text-teal-600 ml-4 flex-shrink-0">
+									<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+									</svg>
+								</div>
+							</button>
+						</div>
+						<div className="mb-8">
+							<button
+								onClick={() => router.push(`/seasons/${seasonId}/admin/roster-evolution-settings`)}
+								className="w-full rounded-lg border-2 border-amber-300 bg-amber-50 p-6 text-left transition hover:bg-amber-100 flex items-center justify-between"
+							>
+								<div>
+									<h3 className="font-semibold text-lg text-amber-900">
+										🔄 Roster Evolution Settings
+									</h3>
+									<p className="mt-2 text-sm text-amber-700">
+										Configure Growth Week cuts, Chaos Week rules, and Pool Draft schedule
+									</p>
+								</div>
+								<div className="text-amber-600 ml-4 flex-shrink-0">
 									<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
 									</svg>
@@ -1075,6 +1129,33 @@ export default function SeasonAdminPage() {
 									</p>
 								</div>
 								<div className="text-blue-700 ml-4 flex-shrink-0">
+									<svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+									</svg>
+								</div>
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* Move to Roster Evolution Button (Commissioner Only, during VOTING phase, after advantages selected) */}
+				{isCommissioner && season.currentPhase === "VOTING" && pendingAdvantageSelections === null && (
+					<div className="mb-8 rounded-lg border border-gray-200 bg-white p-6">
+						<h2 className="mb-4 font-semibold text-xl">Roster Evolution</h2>
+						<div className="space-y-4">
+							<button
+								onClick={() => setShowRosterEvolutionConfirm(true)}
+								className="w-full rounded-lg border-2 border-indigo-400 bg-indigo-100 p-6 text-left transition hover:bg-indigo-200 flex items-center justify-between"
+							>
+								<div>
+									<h3 className="font-semibold text-lg text-indigo-900">
+										🔄 Move to Roster Evolution
+									</h3>
+									<p className="mt-2 text-sm text-indigo-800">
+										Start roster cuts and redrafts for this week.
+									</p>
+								</div>
+								<div className="text-indigo-700 ml-4 flex-shrink-0">
 									<svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
 									</svg>
@@ -1721,6 +1802,51 @@ export default function SeasonAdminPage() {
 							className="bg-blue-600 hover:bg-blue-700"
 						>
 							{isAdvancingToVoting ? "Starting..." : "Start Voting Phase"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Move to Roster Evolution Confirmation Dialog */}
+			<Dialog open={showRosterEvolutionConfirm} onOpenChange={setShowRosterEvolutionConfirm}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>🔄 Move to Roster Evolution?</DialogTitle>
+						<DialogDescription>
+							Start roster cuts and redrafts for Week {season?.currentWeek}
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-3 py-4 text-sm">
+						<div className="rounded-lg bg-indigo-50 p-3 border border-indigo-200">
+							<p className="font-semibold text-indigo-900 mb-2">This will:</p>
+							<ul className="text-indigo-800 space-y-1 ml-4">
+								<li>• Advance the season to ROSTER_EVOLUTION phase</li>
+								<li>• Players will cut artists from their rosters</li>
+								<li>• Cut artists enter the Pool</li>
+								<li>• Players redraft new artists in reverse standings order</li>
+							</ul>
+						</div>
+
+						<p className="font-semibold text-gray-900">
+							Make sure advantages have been awarded before proceeding.
+						</p>
+					</div>
+
+					<DialogFooter>
+						<Button
+							onClick={() => setShowRosterEvolutionConfirm(false)}
+							variant="outline"
+							disabled={isAdvancingToRosterEvolution}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleAdvanceToRosterEvolution}
+							disabled={isAdvancingToRosterEvolution}
+							className="bg-indigo-600 hover:bg-indigo-700"
+						>
+							{isAdvancingToRosterEvolution ? "Starting..." : "Start Roster Evolution"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

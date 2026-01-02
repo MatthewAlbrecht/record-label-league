@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { logEvent } from './events';
+import { awardAdvantagesInternal } from './advantages';
 
 // Helper: Get current challenge's award categories
 async function getCurrentChallengeAwardCategories(
@@ -1015,8 +1016,6 @@ export async function calculateResultsInternal(
   });
 
   // Award advantages based on results
-  // Import and call awardAdvantagesInternal inline to avoid circular deps
-  const { awardAdvantagesInternal } = await import('./advantages');
   await awardAdvantagesInternal(ctx, seasonId, weekNumber);
 
   return { success: true, results: resultsData };

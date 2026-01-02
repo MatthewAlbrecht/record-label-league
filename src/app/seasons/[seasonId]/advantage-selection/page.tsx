@@ -69,8 +69,8 @@ export default function AdvantageSelectionPage() {
             <p className="text-gray-600 mb-6">
               All advantages have been selected. There are no pending selections at this time.
             </p>
-            <Button onClick={() => router.push(`/seasons/${seasonId}`)} variant="outline">
-              Back to Season
+            <Button onClick={() => router.push(`/seasons/${seasonId}/results/${season?.currentWeek || 1}`)} variant="outline">
+              Back to Results
             </Button>
           </div>
         </Card>

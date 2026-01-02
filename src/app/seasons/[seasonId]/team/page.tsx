@@ -67,7 +67,27 @@ export default function TeamPage() {
     );
   }
 
-  const { season, player, roster, advantages } = dashboardData;
+  const { season, player, roster: rawRoster, advantages } = dashboardData;
+  
+  // Filter out CUT artists and sort: draft picks first (by round), then pool/trade acquisitions (by week)
+  const roster = rawRoster
+    .filter((entry) => entry.status !== 'CUT')
+    .sort((a, b) => {
+      const aIsDraft = a.acquiredVia === 'DRAFT';
+      const bIsDraft = b.acquiredVia === 'DRAFT';
+      
+      // Draft picks come first
+      if (aIsDraft && !bIsDraft) return -1;
+      if (!aIsDraft && bIsDraft) return 1;
+      
+      // Within draft picks, sort by round
+      if (aIsDraft && bIsDraft) {
+        return a.acquiredRound - b.acquiredRound;
+      }
+      
+      // Non-draft picks sort by week acquired
+      return a.acquiredAtWeek - b.acquiredAtWeek;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -197,7 +217,11 @@ export default function TeamPage() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <Badge variant="outline">Round {entry.acquiredRound}</Badge>
+                      <Badge variant="outline">
+                        {entry.acquiredVia === 'DRAFT'
+                          ? `Round ${entry.acquiredRound}`
+                          : `Week ${entry.acquiredAtWeek}`}
+                      </Badge>
                       <Badge
                         variant={
                           entry.status === 'ACTIVE' ? 'default' : 'secondary'

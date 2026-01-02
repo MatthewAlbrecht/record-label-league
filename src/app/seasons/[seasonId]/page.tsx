@@ -62,6 +62,19 @@ export default function SeasonPage() {
 
   return (
     <div className="container mx-auto py-6 px-4">
+      {/* Admin Back Button - Commissioner Only */}
+      {isCommissioner && (
+        <button
+          onClick={() => router.push(`/seasons/${seasonId}/admin`)}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Admin Dashboard
+        </button>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-1">{season.name}</h1>
@@ -142,6 +155,81 @@ export default function SeasonPage() {
                 </p>
               </div>
               <div className="text-purple-600 bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                <ArrowRight className="w-6 h-6" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Challenge Selection Link - Show during IN_SEASON_CHALLENGE_SELECTION phase */}
+      {season.currentPhase === 'IN_SEASON_CHALLENGE_SELECTION' && !currentChallenge && (
+        <div className="mb-8">
+          <Link href={`/seasons/${seasonId}/challenge-select`}>
+            <div className="p-6 border-2 border-rose-200 rounded-lg bg-rose-50 hover:bg-rose-100 hover:border-rose-300 transition-all cursor-pointer shadow-sm hover:shadow-md flex items-center justify-between group">
+              <div>
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-wide mb-1 flex items-center gap-1.5 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                  Active Now
+                </p>
+                <h3 className="text-xl font-bold text-rose-900 mb-1">
+                  Challenge Selection
+                </h3>
+                <p className="text-sm text-rose-800">
+                  Week {season.currentWeek} - Pick the challenge for all players
+                </p>
+              </div>
+              <div className="text-rose-600 bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                <ArrowRight className="w-6 h-6" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Roster Evolution Link - Show during ROSTER_EVOLUTION phase */}
+      {season.currentPhase === 'ROSTER_EVOLUTION' && (
+        <div className="mb-8">
+          <Link href={`/seasons/${seasonId}/roster-evolution`}>
+            <div className="p-6 border-2 border-indigo-200 rounded-lg bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300 transition-all cursor-pointer shadow-sm hover:shadow-md flex items-center justify-between group">
+              <div>
+                <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1 flex items-center gap-1.5 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                  Active Now
+                </p>
+                <h3 className="text-xl font-bold text-indigo-900 mb-1">
+                  Roster Evolution
+                </h3>
+                <p className="text-sm text-indigo-800">
+                  Cut artists and redraft for Week {season.currentWeek}
+                </p>
+              </div>
+              <div className="text-indigo-600 bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                <ArrowRight className="w-6 h-6" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Award Show Voting Link - Show during VOTING phase */}
+      {season.currentPhase === 'VOTING' && (
+        <div className="mb-8">
+          <Link href={`/seasons/${seasonId}/vote`}>
+            <div className="p-6 border-2 border-green-200 rounded-lg bg-green-50 hover:bg-green-100 hover:border-green-300 transition-all cursor-pointer shadow-sm hover:shadow-md flex items-center justify-between group">
+              <div>
+                <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1 flex items-center gap-1.5 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-green-600"></span>
+                  Live Now
+                </p>
+                <h3 className="text-xl font-bold text-green-900 mb-1">
+                  Award Show Voting
+                </h3>
+                <p className="text-sm text-green-800">
+                  Vote on Week {season.currentWeek} award categories!
+                </p>
+              </div>
+              <div className="text-green-600 bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
                 <ArrowRight className="w-6 h-6" />
               </div>
             </div>
@@ -255,27 +343,6 @@ export default function SeasonPage() {
           </button>
         )}
 
-        {/* Challenge Selection Link - Show during IN_SEASON_CHALLENGE_SELECTION phase and if no challenge selected */}
-        {season.currentPhase === 'IN_SEASON_CHALLENGE_SELECTION' && !currentChallenge && (
-          <button
-            onClick={() => router.push(`/seasons/${seasonId}/challenge-select`)}
-            className="rounded border border-rose-200 bg-rose-50/50 p-4 text-left transition hover:bg-rose-100 hover:border-rose-300 flex items-center justify-between"
-          >
-            <div>
-              <h3 className="font-medium text-rose-900">
-                Challenge Selection
-              </h3>
-              <p className="mt-1 text-xs text-rose-700">
-                Week {season.currentWeek} - Pick the challenge for all players
-              </p>
-            </div>
-            <div className="text-rose-600 ml-3 flex-shrink-0">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </button>
-        )}
 
         {/* Challenge Board Link - Always available during in-season play */}
         {season.status === 'IN_PROGRESS' && (
@@ -299,49 +366,7 @@ export default function SeasonPage() {
           </button>
         )}
 
-        {/* Voting Link - Show during VOTING phase */}
-        {season.currentPhase === 'VOTING' && (
-          <button
-            onClick={() => router.push(`/seasons/${seasonId}/vote`)}
-            className="rounded border border-green-200 bg-green-50/50 p-4 text-left transition hover:bg-green-100 hover:border-green-300 flex items-center justify-between"
-          >
-            <div>
-              <h3 className="font-medium text-green-900">
-                Award Show Voting
-              </h3>
-              <p className="mt-1 text-xs text-green-700">
-                Week {season.currentWeek} - Vote on awards
-              </p>
-            </div>
-            <div className="text-green-600 ml-3 flex-shrink-0">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </button>
-        )}
 
-        {/* Admin Panel - Commissioner Only */}
-        {isCommissioner && (
-          <button
-            onClick={() => router.push(`/seasons/${seasonId}/admin`)}
-            className="rounded border border-purple-200 bg-purple-50/50 p-4 text-left transition hover:bg-purple-100 hover:border-purple-300 flex items-center justify-between"
-          >
-            <div>
-              <h3 className="font-medium text-purple-900">
-                Admin Dashboard
-              </h3>
-              <p className="mt-1 text-xs text-purple-700">
-                Manage season setup and settings
-              </p>
-            </div>
-            <div className="text-purple-600 ml-3 flex-shrink-0">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </button>
-        )}
 
         {/* Event Log - Commissioner Only */}
         {isCommissioner && (

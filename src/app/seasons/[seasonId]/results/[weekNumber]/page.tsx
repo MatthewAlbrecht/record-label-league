@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
-import { Loader2, ArrowLeft, Trophy, ChevronLeft, ChevronRight, Gift } from 'lucide-react';
+import { Loader2, ArrowLeft, Trophy, ChevronLeft, ChevronRight, Gift, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -55,14 +55,40 @@ export default function WeekResultsPage() {
     weekNumber,
   });
 
+  const pendingAdvantageSelections = useQuery(api.inventory.getPendingAdvantageSelections, {
+    seasonId: seasonId as Id<'seasons'>,
+  });
+
   const awardAdvantagesMutation = useMutation(api.advantages.awardAdvantages);
   const undoAdvantagesMutation = useMutation(api.inventory.undoWeekAdvantageAwards);
+  const advanceToRosterEvolutionMutation = useMutation(api.seasons.advanceToRosterEvolution);
   const [isAwarding, setIsAwarding] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
   const [showUndoDialog, setShowUndoDialog] = useState(false);
+  const [isAdvancingToRosterEvolution, setIsAdvancingToRosterEvolution] = useState(false);
 
   const isCommissioner = season && user && season.league.commissioner.id === user.id;
   const hasResultsButNoAdvantages = weeklyResults && weeklyResults.length > 0 && (!weekAdvantages || weekAdvantages.length === 0);
+  const hasAdvantagesAwarded = weekAdvantages && weekAdvantages.length > 0;
+  const canAdvanceToRosterEvolution = isCommissioner && hasAdvantagesAwarded && season.currentPhase === 'VOTING';
+
+  const handleAdvanceToRosterEvolution = async () => {
+    if (!user) return;
+    setIsAdvancingToRosterEvolution(true);
+    try {
+      await advanceToRosterEvolutionMutation({
+        seasonId: seasonId as Id<'seasons'>,
+        requesterId: user.id as Id<'users'>,
+      });
+      toast.success('Advanced to Roster Evolution!');
+      router.push(`/seasons/${seasonId}/roster-evolution`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to advance to roster evolution';
+      toast.error(errorMsg);
+    } finally {
+      setIsAdvancingToRosterEvolution(false);
+    }
+  };
 
   const handleAwardAdvantages = async () => {
     if (!user) return;
@@ -142,19 +168,20 @@ export default function WeekResultsPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-3 py-4">
       <div className="max-w-2xl mx-auto">
+        {/* Back to Dashboard */}
+        <Link href={`/seasons/${seasonId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Dashboard
+        </Link>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <button onClick={() => router.back()} className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-1.5">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                Week {weekNumber} Results
-              </h1>
-              <p className="text-xs text-gray-500">{season.name}</p>
-            </div>
+          <div>
+            <h1 className="text-lg font-bold flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-yellow-500" />
+              Week {weekNumber} Results
+            </h1>
+            <p className="text-xs text-gray-500">{season.name}</p>
           </div>
           <div className="flex items-center gap-1">
             {hasPreviousWeek && (
@@ -431,8 +458,8 @@ export default function WeekResultsPage() {
           </div>
         )}
 
-        {/* Select Advantages Card (Commissioner Only) */}
-        {isCommissioner && weekAdvantages && weekAdvantages.length > 0 && (
+        {/* Select Advantages Card (Commissioner Only) - only show when there are pending selections */}
+        {isCommissioner && weekAdvantages && weekAdvantages.length > 0 && pendingAdvantageSelections !== null && (
           <Card className="p-6 border-2 border-amber-200 bg-amber-50 mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -448,6 +475,39 @@ export default function WeekResultsPage() {
                   Select Advantages →
                 </Button>
               </Link>
+            </div>
+          </Card>
+        )}
+
+        {/* Move to Roster Evolution Card (Commissioner Only) */}
+        {canAdvanceToRosterEvolution && (
+          <Card className="p-6 border-2 border-indigo-200 bg-indigo-50 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-indigo-900 mb-1">
+                  🔄 Ready for Roster Evolution
+                </h3>
+                <p className="text-sm text-indigo-700">
+                  Advantages have been awarded. Move to roster cuts and redrafts.
+                </p>
+              </div>
+              <Button 
+                onClick={handleAdvanceToRosterEvolution}
+                disabled={isAdvancingToRosterEvolution}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isAdvancingToRosterEvolution ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Advancing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Move to Roster Evolution →
+                  </>
+                )}
+              </Button>
             </div>
           </Card>
         )}

@@ -5,9 +5,10 @@ import { useQuery } from 'convex/react';
 import { api } from 'convex/_generated/api';
 import type { Id } from 'convex/_generated/dataModel';
 import { useAuth } from '~/lib/auth-context';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
-function BoardContent({ seasonId }: { seasonId: Id<'seasons'> }) {
+function BoardContent({ seasonId }: { seasonId: Id<'seasons'> | string }) {
   const boardData = useQuery(api.challenges.getChallengeSelectionPageData, {
     seasonId,
   });
@@ -46,6 +47,15 @@ function BoardContent({ seasonId }: { seasonId: Id<'seasons'> }) {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
+      {/* Back Button */}
+      <Link
+        href={`/seasons/${seasonId}`}
+        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Dashboard
+      </Link>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Week {season.currentWeek} of 8</h1>

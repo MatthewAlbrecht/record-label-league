@@ -177,6 +177,8 @@ export const getDashboardData = query({
           promptText: prompt?.text || 'Unknown',
           status: entry.status,
           acquiredRound: entry.acquiredAtRound,
+          acquiredVia: entry.acquiredVia,
+          acquiredAtWeek: entry.acquiredAtWeek,
         };
       })
     );
@@ -593,6 +595,9 @@ export const getAllPlayersRosters = query({
               promptText: prompt?.text || 'Unknown',
               status: entry.status,
               acquiredRound: entry.acquiredAtRound,
+              acquiredAtWeek: entry.acquiredAtWeek,
+              acquiredVia: entry.acquiredVia,
+              cutAtWeek: entry.cutAtWeek,
             };
           })
         );
@@ -609,6 +614,124 @@ export const getAllPlayersRosters = query({
 
     // Sort by total points descending
     return playersWithRosters.sort((a, b) => b.totalPoints - a.totalPoints);
+  },
+});
+
+// Get weekly history for standings page
+export const getWeeklyHistory = query({
+  args: {
+    seasonId: v.id('seasons'),
+  },
+  handler: async (ctx, args) => {
+    const season = await ctx.db.get(args.seasonId);
+    if (!season) {
+      throw new Error('Season not found');
+    }
+
+    // Get all challenge selections for this season
+    const challengeSelections = await ctx.db
+      .query('challenge_selections')
+      .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
+      .collect();
+
+    // Get all weekly results
+    const weeklyResults = await ctx.db
+      .query('weekly_results')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId)
+      )
+      .collect();
+
+    // Get all playlist submissions
+    const playlistSubmissions = await ctx.db
+      .query('playlist_submissions')
+      .withIndex('by_seasonId_weekNumber', (q) =>
+        q.eq('seasonId', args.seasonId)
+      )
+      .collect();
+
+    // Get all season players
+    const seasonPlayers = await ctx.db
+      .query('season_players')
+      .withIndex('by_seasonId', (q) => q.eq('seasonId', args.seasonId))
+      .collect();
+
+    // Build player lookup map
+    const playerMap = new Map<string, { labelName: string; displayName: string }>();
+    for (const player of seasonPlayers) {
+      const user = await ctx.db.get(player.userId);
+      playerMap.set(player._id.toString(), {
+        labelName: player.labelName,
+        displayName: user?.displayName || 'Unknown',
+      });
+    }
+
+    // Build weekly history
+    const weeklyHistory = await Promise.all(
+      challengeSelections.map(async (selection) => {
+        // Get board challenge and canonical challenge
+        const boardChallenge = await ctx.db.get(selection.boardChallengeId);
+        let challenge = null;
+        if (boardChallenge) {
+          const canonical = await ctx.db.get(boardChallenge.canonicalChallengeId);
+          if (canonical) {
+            challenge = {
+              title: canonical.title,
+              emoji: canonical.emoji,
+              generalVibe: canonical.generalVibe,
+            };
+          }
+        }
+
+        // Get picker info
+        const pickerInfo = playerMap.get(selection.selectedByPlayerId.toString());
+
+        // Get results for this week
+        const weekResults = weeklyResults
+          .filter((r) => r.weekNumber === selection.weekNumber)
+          .sort((a, b) => a.placement - b.placement);
+
+        // Build placements with playlist URLs
+        const placements = await Promise.all(
+          weekResults.map(async (result) => {
+            const playerInfo = playerMap.get(result.seasonPlayerId.toString());
+            
+            // Find playlist submission for this player/week
+            const submission = playlistSubmissions.find(
+              (ps) =>
+                ps.weekNumber === selection.weekNumber &&
+                ps.seasonPlayerId.toString() === result.seasonPlayerId.toString()
+            );
+
+            // Points mapping: 1st=5, 2nd=3, 3rd=2, 4th=1
+            const pointsMap: Record<number, number> = { 1: 5, 2: 3, 3: 2, 4: 1 };
+
+            return {
+              playerId: result.seasonPlayerId,
+              labelName: playerInfo?.labelName || 'Unknown',
+              displayName: playerInfo?.displayName || 'Unknown',
+              placement: result.placement,
+              points: pointsMap[result.placement] || 0,
+              playlistUrl: submission?.spotifyPlaylistUrl || null,
+            };
+          })
+        );
+
+        return {
+          weekNumber: selection.weekNumber,
+          challenge,
+          pickedBy: {
+            playerId: selection.selectedByPlayerId,
+            labelName: pickerInfo?.labelName || 'Unknown',
+            displayName: pickerInfo?.displayName || 'Unknown',
+          },
+          placements,
+        };
+      })
+    );
+
+    // Sort by week number
+    return weeklyHistory.sort((a, b) => a.weekNumber - b.weekNumber);
   },
 });
 

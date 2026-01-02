@@ -22,6 +22,8 @@ export function getPhaseLabel(phase: string): string {
     PLAYLIST_PRESENTATION: 'Playlist Presentation',
     VOTING: 'Voting',
     IN_SEASON_WEEK_END: 'Week End',
+    ROSTER_EVOLUTION: 'Roster Evolution',
+    WEEK_TRANSITION: 'Week Transition',
   };
   return phaseMap[phase] || phase;
 }
