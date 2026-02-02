@@ -203,9 +203,7 @@ export default function VotingPage() {
       });
 
       if (result.isComplete) {
-        toast.success('All voting complete! Results calculated.');
-        // Navigate to results page
-        router.push(`/seasons/${seasonId}/results/${season.currentWeek}`);
+        toast.success('All voting complete! Review the final category results, then click View Results to continue.');
       } else {
         toast.success('Category results revealed!');
       }

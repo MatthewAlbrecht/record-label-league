@@ -136,6 +136,11 @@ export default function SeasonAdminPage() {
 		seasonId: seasonId as Id<"seasons">,
 	});
 
+	const votingSession = useQuery(
+		api.voting.getVotingSession,
+		season ? { seasonId: seasonId as Id<"seasons">, weekNumber: season.currentWeek } : "skip"
+	);
+
 	const weekPlaylists = useQuery(
 		api.playlists.getWeekPlaylists,
 		season && season.currentPhase === "PLAYLIST_SUBMISSION"
@@ -1138,8 +1143,8 @@ export default function SeasonAdminPage() {
 					</div>
 				)}
 
-				{/* Move to Roster Evolution Button (Commissioner Only, during VOTING phase, after advantages selected) */}
-				{isCommissioner && season.currentPhase === "VOTING" && pendingAdvantageSelections === null && (
+				{/* Move to Roster Evolution Button (Commissioner Only, during VOTING phase, after voting closed and advantages selected) */}
+				{isCommissioner && season.currentPhase === "VOTING" && votingSession?.status === "CLOSED" && pendingAdvantageSelections === null && (
 					<div className="mb-8 rounded-lg border border-gray-200 bg-white p-6">
 						<h2 className="mb-4 font-semibold text-xl">Roster Evolution</h2>
 						<div className="space-y-4">
